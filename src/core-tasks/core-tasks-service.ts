@@ -2,8 +2,8 @@ import { inject, injectable } from 'inversify';
 import TaskService from '../task/task-service.js';
 import GitService from '../git/git-service.js';
 import OsOperationsService from '../os-operations/os-operations-service.js';
-import ReleaseService from "../release/release-service.js";
-import SshService from "../ssh/ssh-service.js";
+import ReleaseService from '../release/release-service.js';
+import SshService from '../ssh/ssh-service.js';
 
 @injectable()
 export default class CoreTasksService {
@@ -12,53 +12,72 @@ export default class CoreTasksService {
     @inject(GitService) protected readonly gitService: GitService,
     @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsService,
     @inject(ReleaseService) protected readonly releaseService: ReleaseService,
-    @inject(SshService) protected readonly sshService: SshService
+    @inject(SshService) protected readonly sshService: SshService,
   ) {}
 
   public createGitTask() {
-    this.taskService.addTask('git:clone-branch-pull', async ({ repository, tempDirectory, branch }) => {
-      await this.gitService.cloneRepository(repository, tempDirectory);
-      await this.gitService.changeBranch(tempDirectory, branch);
-      await this.gitService.pull(tempDirectory);
-    });
-  }
-
-  public createBuildTask(installDepsCommand: string, buildCommand: string) {
-    this.taskService.addTask('install-deps', async ({ tempDirectory }) => {
-      await this.osOperationsService.execute(installDepsCommand, [], tempDirectory);
-    });
-    this.taskService.addTask('build', async ({ tempDirectory }) => {
-      await this.osOperationsService.execute(buildCommand, [], tempDirectory);
-    });
+    this.taskService.addTask(
+      'git:clone-branch-pull',
+      async ({ serverConfig: { repository, tempDirectory, branch } }) => {
+        await this.gitService.cloneRepository(repository, tempDirectory);
+        await this.gitService.changeBranch(tempDirectory, branch);
+        await this.gitService.pull(tempDirectory);
+      },
+      true,
+    );
   }
 
   public createCleanupTask() {
-    this.taskService.addTask('cleanup', async ({ tempDirectory }) => {
+    this.taskService.addTask('cleanup', async ({ serverConfig: { tempDirectory } }) => {
       this.osOperationsService.removeDirectory(tempDirectory);
     });
   }
 
   public createReleaseTask() {
-    this.taskService.addTask('create-release', async ({ name }) => {
-      await this.releaseService.createRelease(name)
-    })
+    this.taskService.addTask('releases:create', async ({ serverConfig }) => {
+      await this.releaseService.createRelease(serverConfig);
+    });
   }
 
   public createUploadReleaseTask() {
-    this.taskService.addTask('upload-release', async ({ name }) => {
-      await this.releaseService.uploadRelease(name)
-    })
+    this.taskService.addTask('releases:upload', async ({ serverConfig }) => {
+      await this.releaseService.uploadRelease(serverConfig);
+    });
   }
 
   public createSshConnectTask() {
-    this.taskService.addTask('ssh:connect', async (serverConfig) => {
-      await this.sshService.connect(this.releaseService.serverConfigToSshCredentials(serverConfig))
-    })
+    this.taskService.addTask('ssh:connect', async ({ serverConfig }) => {
+      await this.sshService.connect(serverConfig.ssh);
+    });
   }
 
   public createSshDisconnectTask() {
     this.taskService.addTask('ssh:disconnect', async () => {
-      await this.sshService.disconnect()
-    })
+      await this.sshService.disconnect();
+    });
+  }
+
+  public createCleanUpReleasesTask() {
+    this.taskService.addTask('releases:cleanup', async ({ serverConfig }) => {
+      await this.releaseService.cleanUpReleases(serverConfig);
+    });
+  }
+
+  public createUpdateSymlinkTask() {
+    this.taskService.addTask('releases:update-symlink', async ({ serverConfig }) => {
+      await this.releaseService.createSymlinkForCurrentRelease(serverConfig);
+    });
+  }
+
+  public createRollbackFindReleasesTask() {
+    this.taskService.addTask('releases:rollback:find-releases', async ({ serverConfig }) => {
+      await this.releaseService.findCurrentAndPreviousReleaseForRollback(serverConfig);
+    });
+  }
+
+  public createRemoveRollbackRelease() {
+    this.taskService.addTask('releases:rollback:delete-if-need', async ({ serverConfig }) => {
+      await this.releaseService.deleteReleaseForRollback(serverConfig);
+    });
   }
 }

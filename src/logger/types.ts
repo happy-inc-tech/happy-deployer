@@ -4,5 +4,5 @@ export enum LoggerLevels {
   SUCCESS = 'SUCCESS',
   WARNING = 'WARN',
   COMMAND = 'COMMAND',
-  DEV = 'DEV',
+  VERBOSE = 'VERBOSE',
 }

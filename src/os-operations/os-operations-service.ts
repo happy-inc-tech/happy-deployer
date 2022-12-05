@@ -5,16 +5,10 @@ import crypto from 'node:crypto';
 import child_process from 'node:child_process';
 import fs from 'node:fs';
 import LoggerService from '../logger/logger-service.js';
-import format from 'date-fns/format'
 
 @injectable()
 export default class OsOperationsService {
   constructor(@inject(LoggerService) protected readonly logger: LoggerService) {}
-
-  public getReleaseNameFromCurrentTime(): string {
-    const now = new Date();
-    return format(now, 'yyyyMMddHHmmss')
-  }
 
   public getTempDirectoryPath(): string {
     return os.tmpdir();
@@ -38,11 +32,11 @@ export default class OsOperationsService {
         },
         (error, stdout, stderr) => {
           if (stderr) {
-            this.logger.dev(stderr);
+            this.logger.verbose(stderr);
           }
 
           if (stdout) {
-            this.logger.dev(stdout);
+            this.logger.verbose(stdout);
           }
 
           if (error) {
@@ -58,12 +52,12 @@ export default class OsOperationsService {
   }
 
   public async createDirectory(path: string) {
-    this.logger.dev('creating directory', path);
+    this.logger.verbose('creating directory', path);
     return fs.promises.mkdir(path);
   }
 
   public removeDirectory(path: string) {
-    this.logger.dev('removing directory', path);
+    this.logger.verbose('removing directory', path);
     return fs.rmSync(path, { recursive: true });
   }
 }

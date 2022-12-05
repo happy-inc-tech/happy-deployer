@@ -1,5 +1,5 @@
-import {Container} from "inversify";
+import { Container } from 'inversify';
 
 declare global {
-    var diContainer: Container
+  var diContainer: Container;
 }

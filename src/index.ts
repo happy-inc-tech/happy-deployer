@@ -1,18 +1,36 @@
-import 'reflect-metadata'
-import HappyDeployer from "./deployer/deployer.js";
-import CoreTasksService from "./core-tasks/core-tasks-service.js";
-import LoggerService from "./logger/logger-service.js";
-import ServerService from "./server/server-service.js";
-import TaskService from "./task/task-service.js";
-import createContainer from "./container/create-container.js";
+import 'reflect-metadata';
+import HappyDeployer from './deployer/deployer-service.js';
+import createContainer, { getService } from './container/index.js';
+import { Task } from './task/types.js';
+import TaskService from './task/task-service.js';
 
-export default function createDeployer(): HappyDeployer {
-    const container = createContainer()
+export function createDeployer(): HappyDeployer {
+  createContainer();
+  return getService(HappyDeployer);
+}
 
-    return new HappyDeployer(
-        container.get(ServerService),
-        container.get(TaskService),
-        container.get(CoreTasksService),
-        container.get(LoggerService)
-    )
+export function buildTask(buildCommand: string = 'npm run build'): Task {
+  return getService(TaskService).createTask(
+    'app:build',
+    async ({ execLocal, logger, action, serverConfig: { tempDirectory } }) => {
+      if (action === 'rollback') {
+        logger.info('skipping this task for rollback');
+        return;
+      }
+      await execLocal(buildCommand, [], tempDirectory);
+    },
+  );
+}
+
+export function installDepsTask(installDepsCommand: string = 'npm install'): Task {
+  return getService(TaskService).createTask(
+    'app:install-deps',
+    async ({ execLocal, logger, action, serverConfig: { tempDirectory } }) => {
+      if (action === 'rollback') {
+        logger.info('skipping this task for rollback');
+        return;
+      }
+      await execLocal(installDepsCommand, [], tempDirectory);
+    },
+  );
 }

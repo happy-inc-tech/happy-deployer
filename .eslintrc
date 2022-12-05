@@ -6,7 +6,9 @@
     "@typescript-eslint/explicit-member-accessibility": ["error", {
       "overrides": {
         "constructors": "off"
-      },
-    }]
+      }
+    }],
+    "@typescript-eslint/consistent-type-imports": "error",
+    "@typescript-eslint/no-explicit-any": "off"
   }
 }

@@ -1,3 +1,6 @@
+demo.cjs.cjs
+demo.esm.mjs
 demo.ts
 yarn-error.log
 node_modules
+dist

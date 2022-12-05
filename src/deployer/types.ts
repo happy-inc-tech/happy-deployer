@@ -1,5 +1,6 @@
 export enum RequiredSteps {
   BASE_CONFIG = 'BASE_CONFIG',
   AT_LEAST_ONE_SERVER = 'AT_LEAST_ONE_SERVER',
-  HAS_BUILD_TASK = 'HAS_BUILD_TASK',
 }
+
+export type DeployerAction = 'deploy' | 'rollback';

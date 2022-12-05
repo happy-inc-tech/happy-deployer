@@ -1,59 +1,100 @@
-import { CommonConfig, CommonConfigSettings, ServerConfig, ServerConfigSettings } from './types.js';
 import { inject, injectable } from 'inversify';
 import OsOperationsService from '../os-operations/os-operations-service.js';
-import CacheService from '../cache/cache-service.js';
-import { COMMON_CONFIG_KEY } from '../cache/const.js';
+import type {
+  BaseConfig,
+  DefaultServerConfigValues,
+  ServerConfiguration,
+  ServerConfigurationParameters,
+  ServerConfigurationParametersWithoutName,
+} from './types.js';
+import LoggerService from '../logger/logger-service.js';
+import ProcessService from '../process/process-service.js';
+import ReleaseService from '../release/release-service.js';
+import StorageService from '../storage/storage-service.js';
+import merge from 'lodash.merge';
 
 @injectable()
 export default class ServerService {
-  protected readonly serverConfigs: Record<string, ServerConfig> = {};
+  protected readonly serverConfigs: Record<string, ServerConfiguration> = {};
   constructor(
     @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsService,
-    @inject(CacheService) protected readonly cacheService: CacheService,
+    @inject(StorageService) protected readonly storage: StorageService,
+    @inject(LoggerService) protected readonly logger: LoggerService,
+    @inject(ProcessService) protected readonly processService: ProcessService,
+    @inject(ReleaseService) protected readonly releaseService: ReleaseService,
   ) {}
 
-  public createCommonConfig(settings: CommonConfigSettings): CommonConfig {
-    const cached = this.cacheService.getCached<CommonConfig>(COMMON_CONFIG_KEY);
-    if (cached) {
+  public createBaseConfig(settings: ServerConfigurationParametersWithoutName): BaseConfig {
+    try {
+      const cached = this.storage.getCommonConfig();
       return cached;
-    }
+    } catch (e) {}
 
-    const config = {
-      repository: settings.repository,
-      deleteOnRollback: settings.deleteOnRollback ?? true,
-      releaseNameGetter: this.osOperationsService.getReleaseNameFromCurrentTime,
-      tempDirectory: this.osOperationsService.getRandomBuildDirectory(),
-    };
-
-    this.cacheService.cache(COMMON_CONFIG_KEY, config);
+    const config = merge(this.getDefaultServerConfigValues(), settings);
+    this.storage.setCommonConfig(config);
     return config;
   }
 
-  public createServerConfig(settings: ServerConfigSettings): ServerConfig {
-    const commonConfig = this.cacheService.getCached<CommonConfig>(COMMON_CONFIG_KEY);
-    if (!commonConfig) {
-      throw new ReferenceError('CommonConfig is not created');
+  public createServerConfig(settings: ServerConfigurationParameters): void {
+    const baseConfig = this.storage.getCommonConfig();
+
+    const serverConfig = merge(baseConfig, settings);
+    if (!this.isServerConfiguration(serverConfig)) {
+      return this.processService.errorExit(1);
     }
 
-    const serverConfig: ServerConfig = {
-      ...commonConfig,
-      repository: settings.repository ?? commonConfig.repository,
-      name: settings.name,
-      host: settings.host,
-      port: settings.port,
-      username: settings.username,
-      deployPath: settings.deployPath,
-      dirToCopy:
-        settings.dirToCopy ??
-        this.osOperationsService.getPathRelativeToBuildDirectory(commonConfig.tempDirectory, 'dist'),
-      branch: settings.branch ?? 'master',
-    };
-
     this.serverConfigs[serverConfig.name] = serverConfig;
-    return serverConfig;
   }
 
-  public getServerConfig(name: string): ServerConfig {
+  public getServerConfig(name: string): ServerConfiguration {
     return this.serverConfigs[name];
+  }
+
+  protected getDefaultServerConfigValues(): DefaultServerConfigValues {
+    const tempDirectory = this.osOperationsService.getRandomBuildDirectory();
+    return {
+      branch: 'master',
+      tempDirectory,
+      dirToCopy: this.osOperationsService.getPathRelativeToBuildDirectory(tempDirectory, 'dist'),
+      releaseNameGetter: this.releaseService.getReleaseNameFromCurrentTime,
+      releaseNameComparer: this.releaseService.releasesSorter,
+      deployer: {
+        keepReleases: 5,
+        deleteOnRollback: true,
+        releasesDirName: 'releases',
+        currentReleaseSymlinkName: 'current',
+        showCommandLogs: false,
+      },
+    };
+  }
+
+  protected isServerConfiguration(value: unknown): value is ServerConfiguration {
+    if (typeof value !== 'object' || value === null) {
+      return false;
+    }
+
+    const requiredKeys: Array<keyof ServerConfiguration> = [
+      'name',
+      'repository',
+      'branch',
+      'deployPath',
+      'dirToCopy',
+      'tempDirectory',
+      'releaseNameGetter',
+      'ssh',
+      'deployer',
+    ];
+
+    const missingKeys: string[] = [];
+
+    for (const key of requiredKeys) {
+      if (!(key in value) || (value as any)[key] === undefined) {
+        missingKeys.push(key);
+      }
+    }
+
+    missingKeys.length && this.logger.error('missing required keys in result server config:', missingKeys.join(', '));
+
+    return missingKeys.length === 0;
   }
 }
