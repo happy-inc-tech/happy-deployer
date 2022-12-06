@@ -9,7 +9,7 @@ import {
   RELEASE_NAME_KEY,
   RELEASE_PATH_KEY,
 } from './const.js';
-import { DeployerAction } from '../deployer/types.js';
+import type { DeployerAction } from '../deployer/types.js';
 
 @injectable()
 export default class StorageService {

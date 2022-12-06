@@ -2,7 +2,7 @@ import type { ServerConfiguration } from '../server/types.js';
 import type LoggerService from '../logger/logger-service.js';
 import type OsOperationsService from '../os-operations/os-operations-service.js';
 import type SshService from '../ssh/ssh-service.js';
-import { DeployerAction } from '../deployer/types.js';
+import type { DeployerAction } from '../deployer/types.js';
 
 export type TaskExecutorContext = {
   serverConfig: ServerConfiguration;

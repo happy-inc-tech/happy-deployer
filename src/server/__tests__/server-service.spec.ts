@@ -24,6 +24,7 @@ describe('server-service', () => {
       branch: 'master',
       repository: 'git@git.com/1/2',
       releaseNameGetter: releaseService.getReleaseNameFromCurrentTime,
+      releaseNameComparer: releaseService.releasesSorter,
       tempDirectory: osOpsSpy.mock.results[0].value,
       dirToCopy: osOpsSpy.mock.results[0].value + '/dist',
       deployer: {
@@ -59,6 +60,7 @@ describe('server-service', () => {
     expect(serverConfig).toEqual({
       repository: 'git@git.com/1/2',
       releaseNameGetter: releaseService.getReleaseNameFromCurrentTime,
+      releaseNameComparer: releaseService.releasesSorter,
       tempDirectory: osOpsSpy.mock.results[0].value,
       name: 'prod',
       deployPath: '/var/www/release',
