@@ -6,3 +6,6 @@ Simple deployer for JS apps
 - Deploy and Rollback operations
 - For CJS & ESM, strongly typed
 
+## Documentation
+**Coming soon**
+
