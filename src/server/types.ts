@@ -13,7 +13,7 @@ export type DeployerBehavior = {
 
 export type ServerConfiguration = {
   name: string; // Server configuration name
-  repository: string; // Git repo url
+  repository?: string; // Git repo url, if undefined - Git task will be skipped
   branch: string; // Git branch name
   deployPath: string; // Path on remote host
   dirToCopy: string; // Directory from repo path to copy on serve (default "dist")

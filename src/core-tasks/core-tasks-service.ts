@@ -18,7 +18,11 @@ export default class CoreTasksService {
   public createGitTask() {
     this.taskService.addTask(
       'git:clone-branch-pull',
-      async ({ serverConfig: { repository, tempDirectory, branch } }) => {
+      async ({ serverConfig: { repository, tempDirectory, branch }, logger }) => {
+        if (!repository) {
+          logger.info('"repository" key is undefined, skipping task');
+          return;
+        }
         await this.gitService.cloneRepository(repository, tempDirectory);
         await this.gitService.changeBranch(tempDirectory, branch);
         await this.gitService.pull(tempDirectory);
