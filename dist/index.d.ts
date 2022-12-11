@@ -21,9 +21,9 @@ declare class CacheService {
     getCached<T = unknown>(key: string): T | null;
 }
 
-type DeepPartial<T> = {
-    [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
-};
+type DeepPartial<T> = T extends object ? {
+    [P in keyof T]?: DeepPartial<T[P]>;
+} : T;
 
 type SshCredentials = Config;
 type DeployerBehavior = {
@@ -33,9 +33,9 @@ type DeployerBehavior = {
     currentReleaseSymlinkName: string;
     showCommandLogs: boolean;
 };
-type ServerConfiguration = {
+type ServerConfiguration<MetaType extends Record<string, unknown> = Record<string, unknown>> = {
     name: string;
-    repository: string;
+    repository?: string;
     branch: string;
     deployPath: string;
     dirToCopy: string;
@@ -44,10 +44,11 @@ type ServerConfiguration = {
     releaseNameComparer: (a: string, b: string) => number;
     ssh: SshCredentials;
     deployer: DeployerBehavior;
+    meta: MetaType;
 };
-type DefaultServerConfigValues = Pick<ServerConfiguration, 'branch' | 'dirToCopy' | 'tempDirectory' | 'releaseNameGetter' | 'deployer' | 'releaseNameComparer'>;
-type ServerConfigurationParameters = DeepPartial<ServerConfiguration> & Pick<ServerConfiguration, 'name'>;
-type ServerConfigurationParametersWithoutName = Omit<ServerConfigurationParameters, 'name'>;
+type DefaultServerConfigValues = Pick<ServerConfiguration, 'branch' | 'dirToCopy' | 'tempDirectory' | 'releaseNameGetter' | 'deployer' | 'releaseNameComparer' | 'meta'>;
+type ServerConfigurationParameters<MetaType extends Record<string, unknown> = Record<string, unknown>> = DeepPartial<ServerConfiguration<MetaType>> & Pick<ServerConfiguration<MetaType>, 'name'>;
+type ServerConfigurationParametersWithoutName<MetaType extends Record<string, unknown> = Record<string, unknown>> = Omit<ServerConfigurationParameters<MetaType>, 'name'>;
 type BaseConfig = ServerConfigurationParametersWithoutName & DefaultServerConfigValues;
 
 declare class StorageService {
@@ -146,17 +147,20 @@ declare class ServerService {
     protected isServerConfiguration(value: unknown): value is ServerConfiguration;
 }
 
-type TaskExecutorContext = {
+type TaskExecutorContext<MetaType extends Record<string, unknown> = Record<string, unknown>> = {
     serverConfig: ServerConfiguration;
     logger: LoggerService;
     execLocal: typeof OsOperationsService.prototype.execute;
     execRemote: typeof SshService.prototype.executeRemoteCommand;
     action: DeployerAction;
+    releaseName: string;
+    releasePath: string;
+    meta: MetaType;
 };
-type TaskExecutor = (serverConfig: TaskExecutorContext) => Promise<void>;
-interface Task {
+type TaskExecutor<T extends Record<string, unknown> = Record<string, unknown>> = (serverConfig: TaskExecutorContext<T>) => void | Promise<void>;
+interface Task<T extends Record<string, unknown> = Record<string, unknown>> {
     name: string;
-    executor: TaskExecutor;
+    executor: TaskExecutor<T>;
 }
 
 declare class TaskService {
@@ -168,13 +172,13 @@ declare class TaskService {
     protected readonly storage: StorageService;
     protected tasks: Task[];
     constructor(serverService: ServerService, logger: LoggerService, processService: ProcessService, osOperationsService: OsOperationsService, sshService: SshService, storage: StorageService);
-    addTask(name: string, executor: TaskExecutor, unshift?: boolean): void;
+    addTask(name: string, executor: TaskExecutor<any>, unshift?: boolean): void;
     getTask(taskName: string): Task | undefined;
     runTask(forServer: string, taskName: string): Promise<void>;
     runAllTasks(forServer: string): Promise<void>;
     createTask(name: string, executor: TaskExecutor): Task;
     isTask(value: unknown): value is Task;
-    getTaskExecutorContext(serverConfig: ServerConfiguration): TaskExecutorContext;
+    getTaskExecutorContext<T extends Record<string, unknown> = Record<string, unknown>>(serverConfig: ServerConfiguration<T>): TaskExecutorContext<T>;
 }
 
 declare class GitService {
@@ -216,10 +220,10 @@ declare class HappyDeployer {
     protected readonly storage: StorageService;
     protected readonly steps: Record<RequiredSteps, boolean>;
     constructor(serverService: ServerService, taskService: TaskService, coreTasksService: CoreTasksService, logger: LoggerService, processService: ProcessService, storage: StorageService);
-    baseConfig(settings: ServerConfigurationParametersWithoutName): HappyDeployer;
-    addServer(settings: ServerConfigurationParameters): HappyDeployer;
-    task(task: Task): HappyDeployer;
-    task(name: string, executor: TaskExecutor): HappyDeployer;
+    baseConfig<MetaType extends Record<string, unknown> = Record<string, unknown>>(settings: ServerConfigurationParametersWithoutName<MetaType>): HappyDeployer;
+    addServer<MetaType extends Record<string, unknown> = Record<string, unknown>>(settings: ServerConfigurationParameters<MetaType>): HappyDeployer;
+    task<T extends Record<string, unknown> = Record<string, unknown>>(task: Task<T>): HappyDeployer;
+    task<T extends Record<string, unknown> = Record<string, unknown>>(name: string, executor: TaskExecutor<T>): HappyDeployer;
     deploy(server: string): Promise<void>;
     rollback(server: string): Promise<void>;
     protected createInternalDeployTasks(): void;

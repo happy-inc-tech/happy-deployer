@@ -487,6 +487,7 @@ let ServerService = class ServerService {
                 currentReleaseSymlinkName: 'current',
                 showCommandLogs: false,
             },
+            meta: {},
         };
     }
     isServerConfiguration(value) {
@@ -596,6 +597,9 @@ let TaskService = class TaskService {
             execRemote: this.sshService.executeRemoteCommand.bind(this.sshService),
             logger: this.logger,
             action: this.storage.getDeployerAction(),
+            releaseName: this.storage.getReleaseName(),
+            releasePath: this.storage.getReleasePath(),
+            meta: serverConfig.meta,
         };
     }
 };
@@ -665,7 +669,11 @@ let CoreTasksService = class CoreTasksService {
         this.sshService = sshService;
     }
     createGitTask() {
-        this.taskService.addTask('git:clone-branch-pull', async ({ serverConfig: { repository, tempDirectory, branch } }) => {
+        this.taskService.addTask('git:clone-branch-pull', async ({ serverConfig: { repository, tempDirectory, branch }, logger }) => {
+            if (!repository) {
+                logger.info('"repository" key is undefined, skipping task');
+                return;
+            }
             await this.gitService.cloneRepository(repository, tempDirectory);
             await this.gitService.changeBranch(tempDirectory, branch);
             await this.gitService.pull(tempDirectory);
