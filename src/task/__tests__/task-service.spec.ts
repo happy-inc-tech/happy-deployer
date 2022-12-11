@@ -2,8 +2,21 @@ import { describe, it, expect, vi, Mock, beforeEach } from 'vitest';
 import { getServiceForTests } from '../../test-utils/setup.js';
 import TaskService from '../task-service.js';
 import StorageService from '../../storage/storage-service.js';
+import ServerService from '../../server/server-service.js';
+
+vi.stubGlobal('process', {
+  exit: vi.fn(),
+});
 
 const taskService = getServiceForTests(TaskService);
+getServiceForTests(ServerService).createBaseConfig({
+  repository: 'repo',
+  deployPath: 'deploy/path',
+  ssh: {},
+});
+getServiceForTests(ServerService).createServerConfig({
+  name: 'server',
+});
 getServiceForTests(StorageService).setReleaseName('release');
 getServiceForTests(StorageService).setReleasePath('release/path');
 
@@ -17,7 +30,7 @@ describe('task-service', () => {
     getServiceForTests(StorageService).setDeployerAction('deploy');
   });
 
-  it('creates and retrieves task', () => {
+  it.only('creates and retrieves task', () => {
     taskService.addTask(...tasks[0]);
     expect(taskService.getTask('other-task')).toBeUndefined();
     expect(taskService.getTask('test-task')).toBeDefined();

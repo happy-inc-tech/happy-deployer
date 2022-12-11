@@ -24,21 +24,31 @@ export default class HappyDeployer {
     @inject(StorageService) protected readonly storage: StorageService,
   ) {}
 
-  public baseConfig(settings: ServerConfigurationParametersWithoutName): HappyDeployer {
+  public baseConfig<MetaType extends Record<string, unknown> = Record<string, unknown>>(
+    settings: ServerConfigurationParametersWithoutName<MetaType>,
+  ): HappyDeployer {
     this.serverService.createBaseConfig(settings);
     this.changeStepStatus(RequiredSteps.BASE_CONFIG, true);
     return this;
   }
 
-  public addServer(settings: ServerConfigurationParameters): HappyDeployer {
+  public addServer<MetaType extends Record<string, unknown> = Record<string, unknown>>(
+    settings: ServerConfigurationParameters<MetaType>,
+  ): HappyDeployer {
     this.serverService.createServerConfig(settings);
     this.changeStepStatus(RequiredSteps.AT_LEAST_ONE_SERVER, true);
     return this;
   }
 
-  public task(task: Task): HappyDeployer;
-  public task(name: string, executor: TaskExecutor): HappyDeployer;
-  public task(taskOrName: Task | string, executor?: TaskExecutor): HappyDeployer {
+  public task<T extends Record<string, unknown> = Record<string, unknown>>(task: Task<T>): HappyDeployer;
+  public task<T extends Record<string, unknown> = Record<string, unknown>>(
+    name: string,
+    executor: TaskExecutor<T>,
+  ): HappyDeployer;
+  public task<T extends Record<string, unknown> = Record<string, unknown>>(
+    taskOrName: Task<T> | string,
+    executor?: TaskExecutor<T>,
+  ): HappyDeployer {
     if (this.taskService.isTask(taskOrName)) {
       this.taskService.addTask(taskOrName.name, taskOrName.executor);
     }

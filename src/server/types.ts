@@ -30,8 +30,11 @@ export type DefaultServerConfigValues = Pick<
   'branch' | 'dirToCopy' | 'tempDirectory' | 'releaseNameGetter' | 'deployer' | 'releaseNameComparer' | 'meta'
 >;
 
-export type ServerConfigurationParameters = DeepPartial<ServerConfiguration> & Pick<ServerConfiguration, 'name'>;
+export type ServerConfigurationParameters<MetaType extends Record<string, unknown> = Record<string, unknown>> =
+  DeepPartial<ServerConfiguration<MetaType>> & Pick<ServerConfiguration<MetaType>, 'name'>;
 
-export type ServerConfigurationParametersWithoutName = Omit<ServerConfigurationParameters, 'name'>;
+export type ServerConfigurationParametersWithoutName<
+  MetaType extends Record<string, unknown> = Record<string, unknown>,
+> = Omit<ServerConfigurationParameters<MetaType>, 'name'>;
 
 export type BaseConfig = ServerConfigurationParametersWithoutName & DefaultServerConfigValues;
