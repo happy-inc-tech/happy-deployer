@@ -21,7 +21,7 @@ export default class TaskService {
     @inject(StorageService) protected readonly storage: StorageService,
   ) {}
 
-  public addTask(name: string, executor: TaskExecutor, unshift = false): void {
+  public addTask(name: string, executor: TaskExecutor<any>, unshift = false): void {
     if (this.tasks.some((task) => task.name === name)) {
       this.logger.warn(`Duplicate task name "${name}", new one is skipped`);
       return;
@@ -74,13 +74,18 @@ export default class TaskService {
     );
   }
 
-  public getTaskExecutorContext(serverConfig: ServerConfiguration): TaskExecutorContext {
+  public getTaskExecutorContext<T extends Record<string, unknown> = Record<string, unknown>>(
+    serverConfig: ServerConfiguration<T>,
+  ): TaskExecutorContext<T> {
     return {
       serverConfig,
       execLocal: this.osOperationsService.execute.bind(this.osOperationsService),
       execRemote: this.sshService.executeRemoteCommand.bind(this.sshService),
       logger: this.logger,
       action: this.storage.getDeployerAction(),
+      releaseName: this.storage.getReleaseName(),
+      releasePath: this.storage.getReleasePath(),
+      meta: serverConfig.meta,
     };
   }
 }

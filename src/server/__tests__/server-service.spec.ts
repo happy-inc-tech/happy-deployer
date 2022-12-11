@@ -34,6 +34,7 @@ describe('server-service', () => {
         releasesDirName: 'releases',
         showCommandLogs: false,
       },
+      meta: {},
     } as BaseConfig);
   });
 
@@ -78,6 +79,7 @@ describe('server-service', () => {
         releasesDirName: 'all-releases',
         showCommandLogs: false,
       },
+      meta: {},
     } as ServerConfiguration);
   });
 });

@@ -8,4 +8,3 @@ Simple deployer for JS apps
 
 ## Documentation
 **Coming soon**
-

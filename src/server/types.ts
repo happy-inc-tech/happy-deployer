@@ -11,7 +11,7 @@ export type DeployerBehavior = {
   showCommandLogs: boolean; // Show logs for commands (git, npm, custom; default false)
 };
 
-export type ServerConfiguration = {
+export type ServerConfiguration<MetaType extends Record<string, unknown> = Record<string, unknown>> = {
   name: string; // Server configuration name
   repository?: string; // Git repo url, if undefined - Git task will be skipped
   branch: string; // Git branch name
@@ -22,15 +22,19 @@ export type ServerConfiguration = {
   releaseNameComparer: (a: string, b: string) => number; // Custom release names sorter for custom releaseNameGetter
   ssh: SshCredentials; // Everything you need to perform SSH connection to your server
   deployer: DeployerBehavior; // Customize deployer behavior
+  meta: MetaType; // Mutable "meta" object to store any data
 };
 
 export type DefaultServerConfigValues = Pick<
   ServerConfiguration,
-  'branch' | 'dirToCopy' | 'tempDirectory' | 'releaseNameGetter' | 'deployer' | 'releaseNameComparer'
+  'branch' | 'dirToCopy' | 'tempDirectory' | 'releaseNameGetter' | 'deployer' | 'releaseNameComparer' | 'meta'
 >;
 
-export type ServerConfigurationParameters = DeepPartial<ServerConfiguration> & Pick<ServerConfiguration, 'name'>;
+export type ServerConfigurationParameters<MetaType extends Record<string, unknown> = Record<string, unknown>> =
+  DeepPartial<ServerConfiguration<MetaType>> & Pick<ServerConfiguration<MetaType>, 'name'>;
 
-export type ServerConfigurationParametersWithoutName = Omit<ServerConfigurationParameters, 'name'>;
+export type ServerConfigurationParametersWithoutName<
+  MetaType extends Record<string, unknown> = Record<string, unknown>,
+> = Omit<ServerConfigurationParameters<MetaType>, 'name'>;
 
 export type BaseConfig = ServerConfigurationParametersWithoutName & DefaultServerConfigValues;
