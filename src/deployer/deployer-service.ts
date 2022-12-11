@@ -75,7 +75,7 @@ export default class HappyDeployer {
     this.createInternalDeployTasks();
     this.taskService.assembleTasksArray();
     this.checkRequiredSteps();
-    this.logger.info('Start deploying');
+    this.logger.info(`Start deploying for config "${config.name}"`);
     await this.taskService.runAllTasks(server);
     this.logger.success('Successfully deployed');
   }
