@@ -4,6 +4,8 @@ import TaskService from '../task-service.js';
 import StorageService from '../../storage/storage-service.js';
 
 const taskService = getServiceForTests(TaskService);
+getServiceForTests(StorageService).setReleaseName('release');
+getServiceForTests(StorageService).setReleasePath('release/path');
 
 const tasks: [string, Mock][] = [
   ['test-task', vi.fn()],

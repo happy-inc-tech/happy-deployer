@@ -65,6 +65,7 @@ export default class ServerService {
         currentReleaseSymlinkName: 'current',
         showCommandLogs: false,
       },
+      meta: {},
     };
   }
 

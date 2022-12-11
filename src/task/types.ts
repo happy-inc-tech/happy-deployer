@@ -10,6 +10,8 @@ export type TaskExecutorContext = {
   execLocal: typeof OsOperationsService.prototype.execute;
   execRemote: typeof SshService.prototype.executeRemoteCommand;
   action: DeployerAction;
+  releaseName: string;
+  releasePath: string;
 };
 
 export type TaskExecutor = (serverConfig: TaskExecutorContext) => Promise<void>;

@@ -81,6 +81,8 @@ export default class TaskService {
       execRemote: this.sshService.executeRemoteCommand.bind(this.sshService),
       logger: this.logger,
       action: this.storage.getDeployerAction(),
+      releaseName: this.storage.getReleaseName(),
+      releasePath: this.storage.getReleasePath(),
     };
   }
 }
