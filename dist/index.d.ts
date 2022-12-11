@@ -120,7 +120,8 @@ declare class ReleaseService {
     constructor(sshService: SshService, storage: StorageService, logger: LoggerService, process: ProcessService);
     getReleaseNameFromCurrentTime(): string;
     releasesSorter(a: string, b: string): number;
-    createRelease(serverConfig: ServerConfiguration): Promise<void>;
+    createReleaseNameAndPath(serverConfig: ServerConfiguration): void;
+    createRelease(): Promise<void>;
     uploadRelease(serverConfig: ServerConfiguration): Promise<void>;
     getCurrentReleaseName(): string;
     getCurrentReleasePath(): string;
@@ -218,8 +219,9 @@ declare class HappyDeployer {
     protected readonly logger: LoggerService;
     protected readonly processService: ProcessService;
     protected readonly storage: StorageService;
+    protected readonly releaseService: ReleaseService;
     protected readonly steps: Record<RequiredSteps, boolean>;
-    constructor(serverService: ServerService, taskService: TaskService, coreTasksService: CoreTasksService, logger: LoggerService, processService: ProcessService, storage: StorageService);
+    constructor(serverService: ServerService, taskService: TaskService, coreTasksService: CoreTasksService, logger: LoggerService, processService: ProcessService, storage: StorageService, releaseService: ReleaseService);
     baseConfig<MetaType extends Record<string, unknown> = Record<string, unknown>>(settings: ServerConfigurationParametersWithoutName<MetaType>): HappyDeployer;
     addServer<MetaType extends Record<string, unknown> = Record<string, unknown>>(settings: ServerConfigurationParameters<MetaType>): HappyDeployer;
     task<T extends Record<string, unknown> = Record<string, unknown>>(task: Task<T>): HappyDeployer;

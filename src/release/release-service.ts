@@ -30,14 +30,16 @@ export default class ReleaseService {
     return isBefore(dateAParsed, dateBParsed) ? 1 : -1;
   }
 
-  public async createRelease(serverConfig: ServerConfiguration) {
+  public createReleaseNameAndPath(serverConfig: ServerConfiguration) {
     const settings = serverConfig.deployer;
     const releaseName = serverConfig.releaseNameGetter();
     const releasePath = path.join(serverConfig.deployPath, settings.releasesDirName, releaseName);
     this.storage.setReleaseName(releaseName);
     this.storage.setReleasePath(releasePath);
+  }
 
-    await this.sshService.executeRemoteCommand(`mkdir -p ${releasePath}`);
+  public async createRelease() {
+    await this.sshService.executeRemoteCommand(`mkdir -p ${this.storage.getReleasePath()}`);
   }
 
   public async uploadRelease(serverConfig: ServerConfiguration) {

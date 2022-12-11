@@ -8,6 +8,7 @@ import type { ServerConfigurationParameters, ServerConfigurationParametersWithou
 import { inject, injectable } from 'inversify';
 import ProcessService from '../process/process-service.js';
 import StorageService from '../storage/storage-service.js';
+import ReleaseService from '../release/release-service.js';
 
 @injectable()
 export default class HappyDeployer {
@@ -22,6 +23,7 @@ export default class HappyDeployer {
     @inject(LoggerService) protected readonly logger: LoggerService,
     @inject(ProcessService) protected readonly processService: ProcessService,
     @inject(StorageService) protected readonly storage: StorageService,
+    @inject(ReleaseService) protected readonly releaseService: ReleaseService,
   ) {}
 
   public baseConfig<MetaType extends Record<string, unknown> = Record<string, unknown>>(
@@ -64,6 +66,7 @@ export default class HappyDeployer {
     this.storage.setDeployerAction('deploy');
     const config = this.serverService.getServerConfig(server);
     this.storage.setCurrentConfig(config);
+    this.releaseService.createReleaseNameAndPath(config);
     this.createInternalDeployTasks();
     this.checkRequiredSteps();
     this.logger.info('Start deploying');

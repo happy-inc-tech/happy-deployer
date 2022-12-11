@@ -38,8 +38,8 @@ export default class CoreTasksService {
   }
 
   public createReleaseTask() {
-    this.taskService.addTask('releases:create', async ({ serverConfig }) => {
-      await this.releaseService.createRelease(serverConfig);
+    this.taskService.addTask('releases:create:directory', async () => {
+      await this.releaseService.createRelease();
     });
   }
 

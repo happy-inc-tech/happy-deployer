@@ -73,12 +73,12 @@ CacheService = __decorate([
 ], CacheService);
 var CacheService$1 = CacheService;
 
-const COMMON_CONFIG_KEY = 'a3b40269-d30b-4c26-91ec-7147c340066b';
-const RELEASE_NAME_KEY = '80432dd1-6753-43d1-8f11-c61579db85e7';
-const RELEASE_PATH_KEY = 'b794ad04-09b8-407a-98b0-f3849b2fbb69';
-const CURRENT_SERVER_CONFIG_KEY = 'b5951353-7dff-4e03-997c-771bf953ef25';
-const PREVIOUS_RELEASE_NAME_KEY = 'd888cfd9-bb15-4b19-a9cc-0eb56ec60a71';
-const DEPLOYER_ACTION_KEY = '68cc47e4-0ecb-4b14-8a5f-e69b1d8eaf23';
+const COMMON_CONFIG_KEY = 'COMMON_CONFIG';
+const RELEASE_NAME_KEY = 'RELEASE_NAME';
+const RELEASE_PATH_KEY = 'RELEASE_PATH';
+const CURRENT_SERVER_CONFIG_KEY = 'CURRENT_SERVER_CONFIG';
+const PREVIOUS_RELEASE_NAME_KEY = 'PREVIOUS_RELEASE_NAME';
+const DEPLOYER_ACTION_KEY = 'DEPLOYER_ACTION';
 
 let StorageService = class StorageService {
     cacheService;
@@ -362,13 +362,15 @@ let ReleaseService = class ReleaseService {
         const dateBParsed = parse(b, TIME_FORMAT, new Date());
         return isBefore(dateAParsed, dateBParsed) ? 1 : -1;
     }
-    async createRelease(serverConfig) {
+    createReleaseNameAndPath(serverConfig) {
         const settings = serverConfig.deployer;
         const releaseName = serverConfig.releaseNameGetter();
         const releasePath = path.join(serverConfig.deployPath, settings.releasesDirName, releaseName);
         this.storage.setReleaseName(releaseName);
         this.storage.setReleasePath(releasePath);
-        await this.sshService.executeRemoteCommand(`mkdir -p ${releasePath}`);
+    }
+    async createRelease() {
+        await this.sshService.executeRemoteCommand(`mkdir -p ${this.storage.getReleasePath()}`);
     }
     async uploadRelease(serverConfig) {
         const releasePath = this.getCurrentReleasePath();
@@ -687,8 +689,8 @@ let CoreTasksService = class CoreTasksService {
         });
     }
     createReleaseTask() {
-        this.taskService.addTask('releases:create', async ({ serverConfig }) => {
-            await this.releaseService.createRelease(serverConfig);
+        this.taskService.addTask('releases:create:directory', async () => {
+            await this.releaseService.createRelease();
         });
     }
     createUploadReleaseTask() {
@@ -749,17 +751,19 @@ let HappyDeployer = class HappyDeployer {
     logger;
     processService;
     storage;
+    releaseService;
     steps = {
         [RequiredSteps.BASE_CONFIG]: false,
         [RequiredSteps.AT_LEAST_ONE_SERVER]: false,
     };
-    constructor(serverService, taskService, coreTasksService, logger, processService, storage) {
+    constructor(serverService, taskService, coreTasksService, logger, processService, storage, releaseService) {
         this.serverService = serverService;
         this.taskService = taskService;
         this.coreTasksService = coreTasksService;
         this.logger = logger;
         this.processService = processService;
         this.storage = storage;
+        this.releaseService = releaseService;
     }
     baseConfig(settings) {
         this.serverService.createBaseConfig(settings);
@@ -784,6 +788,7 @@ let HappyDeployer = class HappyDeployer {
         this.storage.setDeployerAction('deploy');
         const config = this.serverService.getServerConfig(server);
         this.storage.setCurrentConfig(config);
+        this.releaseService.createReleaseNameAndPath(config);
         this.createInternalDeployTasks();
         this.checkRequiredSteps();
         this.logger.info('Start deploying');
@@ -837,12 +842,14 @@ HappyDeployer = __decorate([
     __param(3, inversify.inject(LoggerService$1)),
     __param(4, inversify.inject(ProcessService$1)),
     __param(5, inversify.inject(StorageService$1)),
+    __param(6, inversify.inject(ReleaseService$1)),
     __metadata("design:paramtypes", [ServerService$1,
         TaskService$1,
         CoreTasksService$1,
         LoggerService$1,
         ProcessService$1,
-        StorageService$1])
+        StorageService$1,
+        ReleaseService$1])
 ], HappyDeployer);
 var HappyDeployer$1 = HappyDeployer;
 
