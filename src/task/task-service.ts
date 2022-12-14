@@ -5,7 +5,7 @@ import LoggerService from '../logger/logger-service.js';
 import ProcessService from '../process/process-service.js';
 import type { ServerConfiguration } from '../server/types.js';
 import OsOperationsService from '../os-operations/os-operations-service.js';
-import SshService from '../ssh/ssh-service.js';
+import Ssh2SshService from '../ssh/ssh2-ssh-service.js';
 import StorageService from '../storage/storage-service.js';
 
 @injectable()
@@ -17,7 +17,7 @@ export default class TaskService {
     @inject(LoggerService) protected readonly logger: LoggerService,
     @inject(ProcessService) protected readonly processService: ProcessService,
     @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsService,
-    @inject(SshService) protected readonly sshService: SshService,
+    @inject(Ssh2SshService) protected readonly sshService: Ssh2SshService,
     @inject(StorageService) protected readonly storage: StorageService,
   ) {}
 

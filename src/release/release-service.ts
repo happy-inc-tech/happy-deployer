@@ -1,5 +1,5 @@
 import { inject, injectable } from 'inversify';
-import SshService from '../ssh/ssh-service.js';
+import Ssh2SshService from '../ssh/ssh2-ssh-service.js';
 import path from 'node:path';
 import format from 'date-fns/format/index.js';
 import parse from 'date-fns/parse/index.js';
@@ -13,7 +13,7 @@ import ProcessService from '../process/process-service.js';
 @injectable()
 export default class ReleaseService {
   constructor(
-    @inject(SshService) protected readonly sshService: SshService,
+    @inject(Ssh2SshService) protected readonly sshService: Ssh2SshService,
     @inject(StorageService) protected readonly storage: StorageService,
     @inject(LoggerService) protected readonly logger: LoggerService,
     @inject(ProcessService) protected readonly process: ProcessService,

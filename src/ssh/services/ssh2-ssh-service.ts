@@ -1,12 +1,14 @@
 import { inject, injectable } from 'inversify';
 import { NodeSSH } from 'node-ssh';
-import LoggerService from '../logger/logger-service.js';
-import type { SshCredentials } from '../server/types.js';
-import ProcessService from '../process/process-service.js';
+import LoggerService from '../../logger/logger-service.js';
+import type { SshCredentials } from '../../server/types.js';
+import ProcessService from '../../process/process-service.js';
 import fs from 'node:fs';
+import { DeployerSshInterface } from '../types.js';
 
 @injectable()
-export default class SshService {
+export default class Ssh2SshService implements DeployerSshInterface {
+  public serviceName = 'SSH2 (node-ssh) service';
   private sshClient = new NodeSSH();
   private connected = false;
 

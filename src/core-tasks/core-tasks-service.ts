@@ -3,7 +3,7 @@ import TaskService from '../task/task-service.js';
 import GitService from '../git/git-service.js';
 import OsOperationsService from '../os-operations/os-operations-service.js';
 import ReleaseService from '../release/release-service.js';
-import SshService from '../ssh/ssh-service.js';
+import Ssh2SshService from '../ssh/ssh2-ssh-service.js';
 
 @injectable()
 export default class CoreTasksService {
@@ -12,7 +12,7 @@ export default class CoreTasksService {
     @inject(GitService) protected readonly gitService: GitService,
     @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsService,
     @inject(ReleaseService) protected readonly releaseService: ReleaseService,
-    @inject(SshService) protected readonly sshService: SshService,
+    @inject(Ssh2SshService) protected readonly sshService: Ssh2SshService,
   ) {}
 
   public createGitTask() {

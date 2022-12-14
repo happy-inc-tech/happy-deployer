@@ -22,7 +22,7 @@ export default class OsOperationsService {
     return path.resolve(buildDir, ...pathParts);
   }
 
-  public execute(command: string, args: string[], runIn?: string): Promise<void> {
+  public execute(command: string, args: string[], runIn?: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const resultCommand = [command, ...args].join(' ');
       child_process.exec(
@@ -44,7 +44,7 @@ export default class OsOperationsService {
             reject(error);
             return;
           } else {
-            resolve();
+            resolve(stdout);
           }
         },
       );
