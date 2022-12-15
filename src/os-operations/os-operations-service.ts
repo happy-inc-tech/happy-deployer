@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import child_process from 'node:child_process';
 import fs from 'node:fs';
 import LoggerService from '../logger/logger-service.js';
+import { FsEntity } from './types.js';
 
 @injectable()
 export default class OsOperationsService {
@@ -12,6 +13,10 @@ export default class OsOperationsService {
 
   public getTempDirectoryPath(): string {
     return os.tmpdir();
+  }
+
+  public getHomeDirectoryPath(): string {
+    return os.homedir();
   }
 
   public getRandomBuildDirectory(): string {
@@ -22,7 +27,7 @@ export default class OsOperationsService {
     return path.resolve(buildDir, ...pathParts);
   }
 
-  public execute(command: string, args: string[], runIn?: string): Promise<void> {
+  public execute(command: string, args: string[], runIn?: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const resultCommand = [command, ...args].join(' ');
       child_process.exec(
@@ -44,7 +49,7 @@ export default class OsOperationsService {
             reject(error);
             return;
           } else {
-            resolve();
+            resolve(stdout);
           }
         },
       );
@@ -59,5 +64,20 @@ export default class OsOperationsService {
   public removeDirectory(path: string) {
     this.logger.verbose('removing directory', path);
     return fs.rmSync(path, { recursive: true });
+  }
+
+  public async getDirectoryContents(path: string): Promise<FsEntity[]> {
+    const contents = await fs.promises.readdir(path, { withFileTypes: true });
+    return contents.map((entry) => {
+      let type: FsEntity['type'] = 'file';
+      if (entry.isDirectory()) {
+        type = 'directory';
+      }
+
+      return {
+        name: entry.name,
+        type,
+      };
+    });
   }
 }

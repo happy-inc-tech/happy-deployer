@@ -5,8 +5,9 @@ import LoggerService from '../logger/logger-service.js';
 import ProcessService from '../process/process-service.js';
 import type { ServerConfiguration } from '../server/types.js';
 import OsOperationsService from '../os-operations/os-operations-service.js';
-import SshService from '../ssh/ssh-service.js';
 import StorageService from '../storage/storage-service.js';
+import SshManager from '../ssh/ssh-manager.js';
+import type { DeployerSshInterface } from '../ssh/types.js';
 
 @injectable()
 export default class TaskService {
@@ -17,7 +18,7 @@ export default class TaskService {
     @inject(LoggerService) protected readonly logger: LoggerService,
     @inject(ProcessService) protected readonly processService: ProcessService,
     @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsService,
-    @inject(SshService) protected readonly sshService: SshService,
+    @inject(SshManager) protected readonly sshManager: DeployerSshInterface,
     @inject(StorageService) protected readonly storage: StorageService,
   ) {}
 
@@ -80,7 +81,7 @@ export default class TaskService {
     return {
       serverConfig,
       execLocal: this.osOperationsService.execute.bind(this.osOperationsService),
-      execRemote: this.sshService.executeRemoteCommand.bind(this.sshService),
+      execRemote: this.sshManager.executeRemoteCommand.bind(this.sshManager),
       logger: this.logger,
       action: this.storage.getDeployerAction(),
       releaseName: this.storage.getReleaseName(),
