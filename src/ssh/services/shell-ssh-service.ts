@@ -54,6 +54,13 @@ export default class ShellSshService implements DeployerSshInterface {
     await this.osOperationsService.execute(command, []);
   }
 
+  public async readRemoteSymlink(path: string): Promise<string> {
+    const sshCommand = this.createSshRemoteCommandString(`readlink ${path}`);
+    const target = await this.osOperationsService.execute(sshCommand, []);
+    this.log(`Symlink value is "${target}"`);
+    return target.trim();
+  }
+
   protected getDirectoriesFromLsFlaResult(commandResult: string): string[] {
     const lines = commandResult.split('\n');
     const directories: string[] = [];

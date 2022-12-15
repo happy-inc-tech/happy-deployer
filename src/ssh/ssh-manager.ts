@@ -52,4 +52,8 @@ export default class SshManager implements DeployerSshInterface {
   public async uploadDirectory(localPath: string, remotePath: string): Promise<void> {
     return this.service!.uploadDirectory(localPath, remotePath);
   }
+
+  public async readRemoteSymlink(path: string): Promise<string> {
+    return this.service!.readRemoteSymlink(path);
+  }
 }

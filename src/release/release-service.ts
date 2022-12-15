@@ -76,13 +76,19 @@ export default class ReleaseService {
     const currentRelease = await this.getReleaseFromCurrentSymlinkOnRemote(serverConfig);
     const idx = sorted.indexOf(currentRelease);
 
+    if (idx === -1) {
+      this.logger.error('cannot perform rollback: current release not found in releases dir');
+      this.process.errorExit();
+      return;
+    }
+
     if (idx === sorted.length - 1) {
       this.logger.error(`cannot perform rollback: current release "${currentRelease}" is last`);
       this.process.errorExit(1);
       return;
     }
 
-    this.storage.setReleaseName(sorted[idx] + 1);
+    this.storage.setReleaseName(sorted[idx + 1]);
     this.storage.setPreviousReleaseName(currentRelease);
   }
 
