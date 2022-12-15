@@ -7,4 +7,5 @@ export interface DeployerSshInterface {
   getDirectoriesList(remotePath: string): Promise<string[]>;
   connect(credentials: SshCredentials): Promise<void>;
   disconnect(): void | Promise<void>;
+  readRemoteSymlink(path: string): Promise<string>;
 }
