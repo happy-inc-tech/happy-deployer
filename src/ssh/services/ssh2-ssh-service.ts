@@ -5,16 +5,19 @@ import type { SshCredentials } from '../../server/types.js';
 import ProcessService from '../../process/process-service.js';
 import fs from 'node:fs';
 import { DeployerSshInterface } from '../types.js';
+import OsOperationsService from '../../os-operations/os-operations-service.js';
+import path from 'node:path';
 
 @injectable()
 export default class Ssh2SshService implements DeployerSshInterface {
   public serviceName = 'SSH2 (node-ssh) service';
-  private sshClient = new NodeSSH();
-  private connected = false;
+  protected sshClient = new NodeSSH();
+  protected connected = false;
 
   constructor(
-    @inject(LoggerService) protected logger: LoggerService,
-    @inject(ProcessService) protected processService: ProcessService,
+    @inject(LoggerService) protected readonly logger: LoggerService,
+    @inject(ProcessService) protected readonly processService: ProcessService,
+    @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsService,
   ) {}
 
   public async executeRemoteCommand(command: string) {
@@ -67,11 +70,47 @@ export default class Ssh2SshService implements DeployerSshInterface {
   }
 
   public async connect(credentials: SshCredentials) {
+    if (!credentials.password && !credentials.privateKey && !credentials.privateKeyPath) {
+      return this.connectWithEnumerationOfSshKeys(credentials);
+    }
     await this.sshClient.connect(credentials);
     this.connected = true;
   }
 
   public async disconnect() {
     this.sshClient.dispose();
+  }
+
+  protected async connectWithEnumerationOfSshKeys(credentials: SshCredentials) {
+    const homeDir = this.osOperationsService.getHomeDirectoryPath();
+    const sshDir = path.join(homeDir, '.ssh');
+    const sshDirContents = await this.osOperationsService.getDirectoryContents(sshDir);
+    const FORBIDDEN_VALUES = ['known_hosts', 'authorized_keys'];
+    const sshPrivateKeysPaths = sshDirContents.reduce<string[]>((total, entry) => {
+      if (entry.type === 'file' && !FORBIDDEN_VALUES.includes(entry.name) && !entry.name.endsWith('.pub')) {
+        total.push(path.join(sshDir, entry.name));
+      }
+      return total;
+    }, []);
+
+    for (const keyPath of sshPrivateKeysPaths) {
+      try {
+        this.log(`trying to connect with ${keyPath}`, 'verbose');
+        await this.sshClient.connect({
+          ...credentials,
+          privateKeyPath: keyPath,
+        });
+        this.connected = true;
+        return;
+      } catch (e) {
+        this.log(`failed to connect with ${keyPath}`, 'verbose');
+      }
+    }
+
+    throw new Error('All SSH keys failed to connect');
+  }
+
+  protected log(message: string, level: keyof LoggerService = 'info') {
+    this.logger[level]('[SSH]', message);
   }
 }

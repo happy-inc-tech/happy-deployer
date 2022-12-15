@@ -17,9 +17,9 @@ export default class ShellSshService implements DeployerSshInterface {
   ) {}
 
   public async connect(credentials: SshCredentials): Promise<void> {
-    this.log('no need to connect in shell mode; storing credentials instead', 'verbose');
     this.log('it seems like node.js ssh failed to connect to remote server', 'warn');
     this.log('using your system\'s SSH: "password" setting is ignored', 'warn');
+    this.log('trying to connect and immediately exit', 'verbose');
     this.credentials = credentials;
     const sshCommand = this.createSshRemoteCommandString('exit');
     await this.osOperationsService.execute(sshCommand, []);
