@@ -73,15 +73,23 @@ export default class ReleaseService {
   public async findCurrentAndPreviousReleaseForRollback(serverConfig: ServerConfiguration) {
     const allOtherReleases = await this.getAllOtherReleases(serverConfig);
     const sorted = [...allOtherReleases].sort(serverConfig.releaseNameComparer);
-    if (sorted.length < 2) {
-      this.logger.error(`cannot perform rollback with ${sorted.length} releases, 2 required`);
+    const currentRelease = await this.getReleaseFromCurrentSymlinkOnRemote(serverConfig);
+    const idx = sorted.indexOf(currentRelease);
+
+    if (idx === -1) {
+      this.logger.error('cannot perform rollback: current release not found in releases dir');
+      this.process.errorExit();
+      return;
+    }
+
+    if (idx === sorted.length - 1) {
+      this.logger.error(`cannot perform rollback: current release "${currentRelease}" is last`);
       this.process.errorExit(1);
       return;
     }
 
-    const [toDelete, newCurrent] = sorted;
-    this.storage.setReleaseName(newCurrent);
-    this.storage.setPreviousReleaseName(toDelete);
+    this.storage.setReleaseName(sorted[idx + 1]);
+    this.storage.setPreviousReleaseName(currentRelease);
   }
 
   public async deleteReleaseForRollback(serverConfig: ServerConfiguration) {
@@ -111,5 +119,11 @@ export default class ReleaseService {
     this.logger.info(`deleting release ${releaseName}`);
     const releasePath = path.join(serverConfig.deployPath, serverConfig.deployer.releasesDirName, releaseName);
     await this.sshManager.executeRemoteCommand(`rm -rf ${releasePath}`);
+  }
+
+  protected async getReleaseFromCurrentSymlinkOnRemote(serverConfig: ServerConfiguration): Promise<string> {
+    const currentSymlinkFullPath = path.join(serverConfig.deployPath, serverConfig.deployer.currentReleaseSymlinkName);
+    const releasePath = await this.sshManager.readRemoteSymlink(currentSymlinkFullPath);
+    return path.basename(releasePath);
   }
 }

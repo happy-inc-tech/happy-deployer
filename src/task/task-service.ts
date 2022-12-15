@@ -78,6 +78,7 @@ export default class TaskService {
   public getTaskExecutorContext<T extends Record<string, unknown> = Record<string, unknown>>(
     serverConfig: ServerConfiguration<T>,
   ): TaskExecutorContext<T> {
+    console.log(serverConfig);
     return {
       serverConfig,
       execLocal: this.osOperationsService.execute.bind(this.osOperationsService),

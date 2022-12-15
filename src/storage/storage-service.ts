@@ -65,7 +65,7 @@ export default class StorageService {
 
   protected safelyGetFromCache<T>(key: string): T {
     const value = this.cacheService.getCached<T>(key);
-    if (!value) {
+    if (value === null) {
       throw new Error(`[STORAGE] missing key "${key}"`);
     }
 

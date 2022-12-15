@@ -81,6 +81,20 @@ export default class Ssh2SshService implements DeployerSshInterface {
     this.sshClient.dispose();
   }
 
+  public async readRemoteSymlink(path: string): Promise<string> {
+    const sftp = await this.sshClient.requestSFTP();
+    return new Promise((resolve, reject) => {
+      sftp.readlink(path, (err, target) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        this.log(`Symlink value is "${target}"`);
+        resolve(target.trim());
+      });
+    });
+  }
+
   protected async connectWithEnumerationOfSshKeys(credentials: SshCredentials) {
     const homeDir = this.osOperationsService.getHomeDirectoryPath();
     const sshDir = path.join(homeDir, '.ssh');

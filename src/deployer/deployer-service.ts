@@ -76,6 +76,9 @@ export default class HappyDeployer {
 
   public async rollback(server: string) {
     this.storage.setDeployerAction('rollback');
+    // Stubbing releaseName and releasePath for correct work
+    this.storage.setReleaseName('');
+    this.storage.setReleasePath('');
     const config = this.serverService.getServerConfig(server);
     this.storage.setCurrentConfig(config);
     this.createInternalRollbackTasks();

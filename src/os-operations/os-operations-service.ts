@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import child_process from 'node:child_process';
 import fs from 'node:fs';
 import LoggerService from '../logger/logger-service.js';
-import { FsEntity } from './types.js';
+import type { FsEntity } from './types.js';
 
 @injectable()
 export default class OsOperationsService {

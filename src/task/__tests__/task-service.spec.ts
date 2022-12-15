@@ -30,7 +30,7 @@ describe('task-service', () => {
     getServiceForTests(StorageService).setDeployerAction('deploy');
   });
 
-  it.only('creates and retrieves task', () => {
+  it('creates and retrieves task', () => {
     taskService.addTask(...tasks[0]);
     expect(taskService.getTask('other-task')).toBeUndefined();
     expect(taskService.getTask('test-task')).toBeDefined();
@@ -38,20 +38,20 @@ describe('task-service', () => {
 
   it('executes task', async () => {
     taskService.addTask(...tasks[0]);
-    await taskService.runTask('serv', 'test-task');
+    await taskService.runTask('server', 'test-task');
     expect(tasks[0][1]).toHaveBeenCalled();
   });
 
   it('throws an error if run not existed task', async () => {
     expect(async () => {
-      await taskService.runTask('serv', 'other-task');
+      await taskService.runTask('server', 'other-task');
     }).rejects.toThrowError();
   });
 
   it('runs all tasks', async () => {
-    vi.resetAllMocks();
+    // vi.resetAllMocks();
     taskService.addTask(...tasks[1]);
-    await taskService.runAllTasks('serv');
+    await taskService.runAllTasks('server');
     for (const task of tasks) {
       expect(task[1]).toHaveBeenCalled();
     }
