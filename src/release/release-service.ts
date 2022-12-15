@@ -1,5 +1,4 @@
 import { inject, injectable } from 'inversify';
-import Ssh2SshService from '../ssh/ssh2-ssh-service.js';
 import path from 'node:path';
 import format from 'date-fns/format/index.js';
 import parse from 'date-fns/parse/index.js';
@@ -9,11 +8,13 @@ import { TIME_FORMAT } from './const.js';
 import LoggerService from '../logger/logger-service.js';
 import StorageService from '../storage/storage-service.js';
 import ProcessService from '../process/process-service.js';
+import SshManager from '../ssh/ssh-manager.js';
+import type { DeployerSshInterface } from '../ssh/types.js';
 
 @injectable()
 export default class ReleaseService {
   constructor(
-    @inject(Ssh2SshService) protected readonly sshService: Ssh2SshService,
+    @inject(SshManager) protected readonly sshManager: DeployerSshInterface,
     @inject(StorageService) protected readonly storage: StorageService,
     @inject(LoggerService) protected readonly logger: LoggerService,
     @inject(ProcessService) protected readonly process: ProcessService,
@@ -39,14 +40,14 @@ export default class ReleaseService {
   }
 
   public async createRelease() {
-    await this.sshService.executeRemoteCommand(`mkdir -p ${this.storage.getReleasePath()}`);
+    await this.sshManager.executeRemoteCommand(`mkdir -p ${this.storage.getReleasePath()}`);
   }
 
   public async uploadRelease(serverConfig: ServerConfiguration) {
     const releasePath = this.getCurrentReleasePath();
     const dirToUpload = path.resolve(serverConfig.tempDirectory, serverConfig.dirToCopy);
 
-    await this.sshService.uploadDirectory(dirToUpload, releasePath);
+    await this.sshManager.uploadDirectory(dirToUpload, releasePath);
   }
 
   public getCurrentReleaseName(): string {
@@ -96,19 +97,19 @@ export default class ReleaseService {
   public async createSymlinkForCurrentRelease(serverConfig: ServerConfiguration) {
     const currentRelease = this.getCurrentReleaseName();
     const settings = serverConfig.deployer;
-    await this.sshService.executeRemoteCommand(
+    await this.sshManager.executeRemoteCommand(
       `cd ${serverConfig.deployPath} && rm -f ./${settings.currentReleaseSymlinkName} && ln -s ./${settings.releasesDirName}/${currentRelease} ./${settings.currentReleaseSymlinkName}`,
     );
   }
 
   protected async getAllOtherReleases(serverConfig: ServerConfiguration) {
     const settings = serverConfig.deployer;
-    return this.sshService.getDirectoriesList(path.join(serverConfig.deployPath, settings.releasesDirName));
+    return this.sshManager.getDirectoriesList(path.join(serverConfig.deployPath, settings.releasesDirName));
   }
 
   protected async deleteRelease(serverConfig: ServerConfiguration, releaseName: string) {
     this.logger.info(`deleting release ${releaseName}`);
     const releasePath = path.join(serverConfig.deployPath, serverConfig.deployer.releasesDirName, releaseName);
-    await this.sshService.executeRemoteCommand(`rm -rf ${releasePath}`);
+    await this.sshManager.executeRemoteCommand(`rm -rf ${releasePath}`);
   }
 }

@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { inject, injectable } from 'inversify';
-import { DeployerSshInterface } from './types.js';
-import { SshCredentials } from '../server/types.js';
+import type { DeployerSshInterface } from './types.js';
+import type { SshCredentials } from '../server/types.js';
 import Ssh2SshService from './services/ssh2-ssh-service.js';
 import ShellSshService from './services/shell-ssh-service.js';
 import LoggerService from '../logger/logger-service.js';
@@ -25,6 +26,7 @@ export default class SshManager implements DeployerSshInterface {
     for (const service of this.services) {
       try {
         await service.connect(credentials);
+        this.logger.verbose('ssh manager: using', service.serviceName);
         this.service = service;
         return;
       } catch (e) {

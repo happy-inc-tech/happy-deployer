@@ -18,10 +18,11 @@ export default class ShellSshService implements DeployerSshInterface {
 
   public async connect(credentials: SshCredentials): Promise<void> {
     this.log('no need to connect in shell mode; storing credentials instead', 'verbose');
-    this.log('it seems like node.js ssh failed to connect to remote server');
+    this.log('it seems like node.js ssh failed to connect to remote server', 'warn');
     this.log('using your system\'s SSH: "password" setting is ignored', 'warn');
     this.credentials = credentials;
-    return Promise.resolve(undefined);
+    const sshCommand = this.createSshRemoteCommandString('exit');
+    await this.osOperationsService.execute(sshCommand, []);
   }
 
   public disconnect(): void | Promise<void> {
@@ -35,7 +36,7 @@ export default class ShellSshService implements DeployerSshInterface {
   }
 
   public async getDirectoriesList(remotePath: string): Promise<string[]> {
-    const sshCommand = `cd ${remotePath} && ls -Fla`;
+    const sshCommand = this.createSshRemoteCommandString(`cd ${remotePath} && ls -FlA`);
     const commandResult = await this.osOperationsService.execute(sshCommand, []);
     return this.getDirectoriesFromLsFlaResult(commandResult);
   }
@@ -49,7 +50,7 @@ export default class ShellSshService implements DeployerSshInterface {
 
     const { username, host, port = 22 } = this.credentials;
 
-    const command = `scp -r ${localPath} ${username}@${host}:${remotePath} -P ${port}`;
+    const command = `scp -r -P ${port} ${localPath}/* ${username}@${host}:${remotePath}`;
     await this.osOperationsService.execute(command, []);
   }
 
@@ -68,7 +69,7 @@ export default class ShellSshService implements DeployerSshInterface {
       if (!name.endsWith('/')) {
         continue;
       }
-      directories.push(name.trim().slice());
+      directories.push(name.trim().slice(0, -1));
     }
 
     return directories;

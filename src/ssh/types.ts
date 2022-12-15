@@ -1,4 +1,4 @@
-import { SshCredentials } from '../server/types.js';
+import type { SshCredentials } from '../server/types.js';
 
 export interface DeployerSshInterface {
   serviceName: string;

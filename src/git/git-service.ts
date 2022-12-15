@@ -29,6 +29,6 @@ export default class GitService {
   }
 
   protected async runGitCommand(args: string[], runIn?: string): Promise<void> {
-    return this.osOperationsService.execute('git', args, runIn);
+    await this.osOperationsService.execute('git', args, runIn);
   }
 }
