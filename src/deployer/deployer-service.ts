@@ -68,6 +68,7 @@ export default class HappyDeployer {
     this.storage.setCurrentConfig(config);
     this.releaseService.createReleaseNameAndPath(config);
     this.createInternalDeployTasks();
+    this.taskService.assembleTasksArray();
     this.checkRequiredSteps();
     this.logger.info('Start deploying');
     await this.taskService.runAllTasks(server);

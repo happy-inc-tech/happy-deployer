@@ -1,5 +1,5 @@
 import { inject, injectable } from 'inversify';
-import type { Task, TaskExecutor, TaskExecutorContext } from './types.js';
+import type { Task, TaskExecutor, TaskExecutorContext, TaskGroups, TaskPosition } from './types.js';
 import ServerService from '../server/server-service.js';
 import LoggerService from '../logger/logger-service.js';
 import ProcessService from '../process/process-service.js';
@@ -8,10 +8,16 @@ import OsOperationsService from '../os-operations/os-operations-service.js';
 import StorageService from '../storage/storage-service.js';
 import SshManager from '../ssh/ssh-manager.js';
 import type { DeployerSshInterface } from '../ssh/types.js';
+import { TASK_POSITIONS } from './const.js';
 
 @injectable()
 export default class TaskService {
   protected tasks: Task[] = [];
+  protected taskGroups: TaskGroups = {
+    [TASK_POSITIONS.FIRST]: null,
+    [TASK_POSITIONS.ORDER]: [],
+    [TASK_POSITIONS.AFTER_RELEASE]: [],
+  };
 
   constructor(
     @inject(ServerService) protected readonly serverService: ServerService,
@@ -22,13 +28,47 @@ export default class TaskService {
     @inject(StorageService) protected readonly storage: StorageService,
   ) {}
 
-  public addTask(name: string, executor: TaskExecutor<any>, unshift = false): void {
-    if (this.tasks.some((task) => task.name === name)) {
+  public assembleTasksArray() {
+    const { first, ['after-release']: afterRelease, order } = this.taskGroups;
+    this.tasks.unshift(...order);
+    first && this.tasks.unshift(first);
+    if (!afterRelease.length) return;
+
+    // @todo change to constant
+    const releaseTaskPos = this.tasks.findIndex((task) => task.name === 'releases:upload');
+    this.tasks.splice(releaseTaskPos + 1, 0, ...afterRelease);
+  }
+
+  public addTask(name: string, executor: TaskExecutor<any>, position: TaskPosition = TASK_POSITIONS.ORDER): void {
+    const newTask = this.createTask(name, executor);
+
+    if (position === TASK_POSITIONS.DIRECT) {
+      if (this.tasks.some((task) => task.name === name)) {
+        this.logger.warn(`Duplicate task name "${name}", new one is skipped`);
+        return;
+      }
+      this.tasks.push(newTask);
+      return;
+    }
+
+    if (
+      this.taskGroups[TASK_POSITIONS.FIRST]?.name === name ||
+      this.taskGroups[TASK_POSITIONS.ORDER].some((task) => task.name === name) ||
+      this.taskGroups[TASK_POSITIONS.AFTER_RELEASE].some((task) => task.name === name)
+    ) {
       this.logger.warn(`Duplicate task name "${name}", new one is skipped`);
       return;
     }
 
-    this.tasks[unshift ? 'unshift' : 'push'](this.createTask(name, executor));
+    if (position === TASK_POSITIONS.FIRST) {
+      if (this.taskGroups.first && !this.taskGroups.order.some((task) => task.name === name)) {
+        this.taskGroups.order.unshift(this.taskGroups.first);
+      }
+      this.taskGroups.first = newTask;
+      return;
+    }
+
+    this.taskGroups[position].push(newTask);
   }
 
   public getTask(taskName: string): Task | undefined {
@@ -75,10 +115,25 @@ export default class TaskService {
     );
   }
 
+  public getAssembledTasks() {
+    return this.tasks;
+  }
+
+  public clearAssembledTasks() {
+    this.tasks = [];
+  }
+
+  public clearTasksGroups() {
+    this.taskGroups = {
+      first: null,
+      order: [],
+      'after-release': [],
+    };
+  }
+
   public getTaskExecutorContext<T extends Record<string, unknown> = Record<string, unknown>>(
     serverConfig: ServerConfiguration<T>,
   ): TaskExecutorContext<T> {
-    console.log(serverConfig);
     return {
       serverConfig,
       execLocal: this.osOperationsService.execute.bind(this.osOperationsService),
