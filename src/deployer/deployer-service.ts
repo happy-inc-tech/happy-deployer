@@ -75,7 +75,7 @@ export default class HappyDeployer {
     this.createInternalDeployTasks();
     this.taskService.assembleTasksArray();
     this.checkRequiredSteps();
-    this.logger.info('Start deploying');
+    this.logger.info(`Start deploying for config "${config.name}"`);
     await this.taskService.runAllTasks(server);
     this.logger.success('Successfully deployed');
   }
@@ -87,9 +87,10 @@ export default class HappyDeployer {
     this.storage.setReleasePath('');
     const config = this.serverService.getServerConfig(server);
     this.storage.setCurrentConfig(config);
+    this.releaseService.createReleaseNameAndPath(config);
     this.createInternalRollbackTasks();
     this.checkRequiredSteps();
-    this.logger.info('Start rollback');
+    this.logger.info(`Start rollback for config "${config.name}"`);
     await this.taskService.runAllTasks(server);
     this.logger.success('Rollback was successful');
   }
