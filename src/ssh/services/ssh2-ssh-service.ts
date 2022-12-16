@@ -28,6 +28,7 @@ export default class Ssh2SshService implements DeployerSshInterface {
       this.logger.error('[SSH]', `remote command "${command}" failed`);
       this.processService.errorExit(1);
     }
+    return stdout;
   }
 
   public async uploadDirectory(localPath: string, remotePath: string) {

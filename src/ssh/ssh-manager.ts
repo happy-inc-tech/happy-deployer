@@ -41,7 +41,7 @@ export default class SshManager implements DeployerSshInterface {
     return this.service!.disconnect();
   }
 
-  public async executeRemoteCommand(command: string): Promise<void> {
+  public async executeRemoteCommand(command: string): Promise<string> {
     return this.service!.executeRemoteCommand(command);
   }
 
