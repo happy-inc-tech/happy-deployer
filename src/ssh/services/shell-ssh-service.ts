@@ -30,9 +30,9 @@ export default class ShellSshService implements DeployerSshInterface {
     return undefined;
   }
 
-  public async executeRemoteCommand(command: string): Promise<void> {
+  public async executeRemoteCommand(command: string): Promise<string> {
     const sshCommand = this.createSshRemoteCommandString(command);
-    await this.osOperationsService.execute(sshCommand, []);
+    return this.osOperationsService.execute(sshCommand, []);
   }
 
   public async getDirectoriesList(remotePath: string): Promise<string[]> {

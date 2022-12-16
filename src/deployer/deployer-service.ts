@@ -1,7 +1,7 @@
 import { RequiredSteps } from './types.js';
 import ServerService from '../server/server-service.js';
 import TaskService from '../task/task-service.js';
-import type { Task, TaskExecutor } from '../task/types.js';
+import type { Task, TaskExecutor, TaskPosition } from '../task/types.js';
 import LoggerService from '../logger/logger-service.js';
 import CoreTasksService from '../core-tasks/core-tasks-service.js';
 import type { ServerConfigurationParameters, ServerConfigurationParametersWithoutName } from '../server/types.js';
@@ -42,21 +42,26 @@ export default class HappyDeployer {
     return this;
   }
 
-  public task<T extends Record<string, unknown> = Record<string, unknown>>(task: Task<T>): HappyDeployer;
+  public task<T extends Record<string, unknown> = Record<string, unknown>>(
+    task: Task<T>,
+    position?: TaskPosition,
+  ): HappyDeployer;
   public task<T extends Record<string, unknown> = Record<string, unknown>>(
     name: string,
     executor: TaskExecutor<T>,
+    position?: TaskPosition,
   ): HappyDeployer;
   public task<T extends Record<string, unknown> = Record<string, unknown>>(
     taskOrName: Task<T> | string,
-    executor?: TaskExecutor<T>,
+    executorOrPosition?: TaskExecutor<T> | TaskPosition,
+    position?: TaskPosition,
   ): HappyDeployer {
     if (this.taskService.isTask(taskOrName)) {
-      this.taskService.addTask(taskOrName.name, taskOrName.executor);
+      this.taskService.addTask(taskOrName.name, taskOrName.executor, position);
     }
 
-    if (typeof taskOrName === 'string' && executor !== undefined) {
-      this.taskService.addTask(taskOrName, executor);
+    if (typeof taskOrName === 'string' && executorOrPosition !== undefined) {
+      this.taskService.addTask(taskOrName, executorOrPosition as TaskExecutor, position);
     }
 
     return this;
@@ -68,6 +73,7 @@ export default class HappyDeployer {
     this.storage.setCurrentConfig(config);
     this.releaseService.createReleaseNameAndPath(config);
     this.createInternalDeployTasks();
+    this.taskService.assembleTasksArray();
     this.checkRequiredSteps();
     this.logger.info('Start deploying');
     await this.taskService.runAllTasks(server);

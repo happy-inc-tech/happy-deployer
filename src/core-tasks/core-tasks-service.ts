@@ -5,6 +5,19 @@ import OsOperationsService from '../os-operations/os-operations-service.js';
 import ReleaseService from '../release/release-service.js';
 import SshManager from '../ssh/ssh-manager.js';
 import type { DeployerSshInterface } from '../ssh/types.js';
+import { taskPositions } from '../task/const.js';
+import {
+  CLEANUP_CORE_TASK_NAME,
+  GIT_CORE_TASK_NAME,
+  RELEASES_CLEANUP_CORE_TASK_NAME,
+  RELEASES_CREATE_DIR_CORE_TASK_NAME,
+  RELEASES_ROLLBACK_DELETE_IF_NEED_CORE_TASK_NAME,
+  RELEASES_ROLLBACK_FIND_RELEASES_CORE_TASK_NAME,
+  RELEASES_UPDATE_SYMLINK_CORE_TASK_NAME,
+  RELEASES_UPLOAD_CORE_TASK_NAME,
+  SSH_CONNECT_CORE_TASK_NAME,
+  SSH_DISCONNECT_CORE_TASK_NAME,
+} from './const.js';
 
 @injectable()
 export default class CoreTasksService {
@@ -18,7 +31,7 @@ export default class CoreTasksService {
 
   public createGitTask() {
     this.taskService.addTask(
-      'git:clone-branch-pull',
+      GIT_CORE_TASK_NAME,
       async ({ serverConfig: { repository, tempDirectory, branch }, logger }) => {
         if (!repository) {
           logger.info('"repository" key is undefined, skipping task');
@@ -28,60 +41,88 @@ export default class CoreTasksService {
         await this.gitService.changeBranch(tempDirectory, branch);
         await this.gitService.pull(tempDirectory);
       },
-      true,
+      taskPositions.FIRST,
     );
   }
 
   public createCleanupTask() {
-    this.taskService.addTask('cleanup', async ({ serverConfig: { tempDirectory } }) => {
-      this.osOperationsService.removeDirectory(tempDirectory);
-    });
+    this.taskService.addTask(
+      CLEANUP_CORE_TASK_NAME,
+      async ({ serverConfig: { tempDirectory } }) => {
+        this.osOperationsService.removeDirectory(tempDirectory);
+      },
+      taskPositions.DIRECT,
+    );
   }
 
   public createReleaseTask() {
-    this.taskService.addTask('releases:create:directory', async () => {
-      await this.releaseService.createRelease();
-    });
+    this.taskService.addTask(
+      RELEASES_CREATE_DIR_CORE_TASK_NAME,
+      async () => {
+        await this.releaseService.createRelease();
+      },
+      taskPositions.DIRECT,
+    );
   }
 
   public createUploadReleaseTask() {
-    this.taskService.addTask('releases:upload', async ({ serverConfig }) => {
-      await this.releaseService.uploadRelease(serverConfig);
-    });
+    this.taskService.addTask(
+      RELEASES_UPLOAD_CORE_TASK_NAME,
+      async ({ serverConfig }) => {
+        await this.releaseService.uploadRelease(serverConfig);
+      },
+      taskPositions.DIRECT,
+    );
   }
 
   public createSshConnectTask() {
-    this.taskService.addTask('ssh:connect', async ({ serverConfig }) => {
-      await this.sshManager.connect(serverConfig.ssh);
-    });
+    this.taskService.addTask(
+      SSH_CONNECT_CORE_TASK_NAME,
+      async ({ serverConfig }) => {
+        await this.sshManager.connect(serverConfig.ssh);
+      },
+      taskPositions.DIRECT,
+    );
   }
 
   public createSshDisconnectTask() {
-    this.taskService.addTask('ssh:disconnect', async () => {
-      await this.sshManager.disconnect();
-    });
+    this.taskService.addTask(
+      SSH_DISCONNECT_CORE_TASK_NAME,
+      async () => {
+        await this.sshManager.disconnect();
+      },
+      taskPositions.DIRECT,
+    );
   }
 
   public createCleanUpReleasesTask() {
-    this.taskService.addTask('releases:cleanup', async ({ serverConfig }) => {
-      await this.releaseService.cleanUpReleases(serverConfig);
-    });
+    this.taskService.addTask(
+      RELEASES_CLEANUP_CORE_TASK_NAME,
+      async ({ serverConfig }) => {
+        await this.releaseService.cleanUpReleases(serverConfig);
+      },
+      taskPositions.DIRECT,
+    );
   }
 
   public createUpdateSymlinkTask() {
-    this.taskService.addTask('releases:update-symlink', async ({ serverConfig }) => {
-      await this.releaseService.createSymlinkForCurrentRelease(serverConfig);
-    });
+    this.taskService.addTask(
+      RELEASES_UPDATE_SYMLINK_CORE_TASK_NAME,
+      async ({ serverConfig }) => {
+        await this.releaseService.createSymlinkForCurrentRelease(serverConfig);
+      },
+      taskPositions.DIRECT,
+    );
   }
 
   public createRollbackFindReleasesTask() {
-    this.taskService.addTask('releases:rollback:find-releases', async ({ serverConfig }) => {
+    this.taskService.addTask(RELEASES_ROLLBACK_FIND_RELEASES_CORE_TASK_NAME, async ({ serverConfig }) => {
       await this.releaseService.findCurrentAndPreviousReleaseForRollback(serverConfig);
     });
   }
 
   public createRemoveRollbackRelease() {
-    this.taskService.addTask('releases:rollback:delete-if-need', async ({ serverConfig }) => {
+    this.taskService.addTask(RELEASES_ROLLBACK_DELETE_IF_NEED_CORE_TASK_NAME, async ({ serverConfig }) => {
       await this.releaseService.deleteReleaseForRollback(serverConfig);
     });
   }
