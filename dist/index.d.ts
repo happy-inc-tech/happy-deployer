@@ -24,6 +24,7 @@ declare class CacheService {
 type DeepPartial<T> = T extends object ? {
     [P in keyof T]?: DeepPartial<T[P]>;
 } : T;
+type ValuesOf<T extends Record<string, unknown>> = T[keyof T];
 
 type SshCredentials = Config;
 type DeployerBehavior = {
@@ -81,15 +82,22 @@ declare class LoggerService {
     protected stdout(level: LoggerLevels, ...messages: any[]): void;
 }
 
+type FsEntity = {
+    name: string;
+    type: 'directory' | 'file';
+};
+
 declare class OsOperationsService {
     protected readonly logger: LoggerService;
     constructor(logger: LoggerService);
     getTempDirectoryPath(): string;
+    getHomeDirectoryPath(): string;
     getRandomBuildDirectory(): string;
     getPathRelativeToBuildDirectory(buildDir: string, ...pathParts: string[]): string;
-    execute(command: string, args: string[], runIn?: string): Promise<void>;
+    execute(command: string, args: string[], runIn?: string): Promise<string>;
     createDirectory(path: string): Promise<void>;
     removeDirectory(path: string): void;
+    getDirectoryContents(path: string): Promise<FsEntity[]>;
 }
 
 declare class ProcessService {
@@ -99,25 +107,22 @@ declare class ProcessService {
     errorExit(code?: number): void;
 }
 
-declare class SshService {
-    protected logger: LoggerService;
-    protected processService: ProcessService;
-    private sshClient;
-    private connected;
-    constructor(logger: LoggerService, processService: ProcessService);
-    executeRemoteCommand(command: string): Promise<void>;
+interface DeployerSshInterface {
+    serviceName: string;
+    executeRemoteCommand(command: string): Promise<string>;
     uploadDirectory(localPath: string, remotePath: string): Promise<void>;
     getDirectoriesList(remotePath: string): Promise<string[]>;
     connect(credentials: SshCredentials): Promise<void>;
-    disconnect(): Promise<void>;
+    disconnect(): void | Promise<void>;
+    readRemoteSymlink(path: string): Promise<string>;
 }
 
 declare class ReleaseService {
-    protected readonly sshService: SshService;
+    protected readonly sshManager: DeployerSshInterface;
     protected readonly storage: StorageService;
     protected readonly logger: LoggerService;
     protected readonly process: ProcessService;
-    constructor(sshService: SshService, storage: StorageService, logger: LoggerService, process: ProcessService);
+    constructor(sshManager: DeployerSshInterface, storage: StorageService, logger: LoggerService, process: ProcessService);
     getReleaseNameFromCurrentTime(): string;
     releasesSorter(a: string, b: string): number;
     createReleaseNameAndPath(serverConfig: ServerConfiguration): void;
@@ -131,6 +136,7 @@ declare class ReleaseService {
     createSymlinkForCurrentRelease(serverConfig: ServerConfiguration): Promise<void>;
     protected getAllOtherReleases(serverConfig: ServerConfiguration): Promise<string[]>;
     protected deleteRelease(serverConfig: ServerConfiguration, releaseName: string): Promise<void>;
+    protected getReleaseFromCurrentSymlinkOnRemote(serverConfig: ServerConfiguration): Promise<string>;
 }
 
 declare class ServerService {
@@ -148,11 +154,18 @@ declare class ServerService {
     protected isServerConfiguration(value: unknown): value is ServerConfiguration;
 }
 
+declare const taskPositions: {
+    readonly ORDER: "order";
+    readonly FIRST: "first";
+    readonly AFTER_RELEASE_UPLOAD: "after-release-upload";
+    readonly DIRECT: "direct";
+};
+
 type TaskExecutorContext<MetaType extends Record<string, unknown> = Record<string, unknown>> = {
     serverConfig: ServerConfiguration;
     logger: LoggerService;
     execLocal: typeof OsOperationsService.prototype.execute;
-    execRemote: typeof SshService.prototype.executeRemoteCommand;
+    execRemote: DeployerSshInterface['executeRemoteCommand'];
     action: DeployerAction;
     releaseName: string;
     releasePath: string;
@@ -163,22 +176,33 @@ interface Task<T extends Record<string, unknown> = Record<string, unknown>> {
     name: string;
     executor: TaskExecutor<T>;
 }
+type TaskPosition = ValuesOf<typeof taskPositions>;
+type TaskGroups = {
+    [taskPositions.FIRST]: Task | null;
+    [taskPositions.ORDER]: Task[];
+    [taskPositions.AFTER_RELEASE_UPLOAD]: Task[];
+};
 
 declare class TaskService {
     protected readonly serverService: ServerService;
     protected readonly logger: LoggerService;
     protected readonly processService: ProcessService;
     protected readonly osOperationsService: OsOperationsService;
-    protected readonly sshService: SshService;
+    protected readonly sshManager: DeployerSshInterface;
     protected readonly storage: StorageService;
     protected tasks: Task[];
-    constructor(serverService: ServerService, logger: LoggerService, processService: ProcessService, osOperationsService: OsOperationsService, sshService: SshService, storage: StorageService);
-    addTask(name: string, executor: TaskExecutor<any>, unshift?: boolean): void;
+    protected taskGroups: TaskGroups;
+    constructor(serverService: ServerService, logger: LoggerService, processService: ProcessService, osOperationsService: OsOperationsService, sshManager: DeployerSshInterface, storage: StorageService);
+    assembleTasksArray(): void;
+    addTask(name: string, executor: TaskExecutor<any>, position?: TaskPosition): void;
     getTask(taskName: string): Task | undefined;
     runTask(forServer: string, taskName: string): Promise<void>;
     runAllTasks(forServer: string): Promise<void>;
     createTask(name: string, executor: TaskExecutor): Task;
     isTask(value: unknown): value is Task;
+    getAssembledTasks(): Task<Record<string, unknown>>[];
+    clearAssembledTasks(): void;
+    clearTasksGroups(): void;
     getTaskExecutorContext<T extends Record<string, unknown> = Record<string, unknown>>(serverConfig: ServerConfiguration<T>): TaskExecutorContext<T>;
 }
 
@@ -198,8 +222,8 @@ declare class CoreTasksService {
     protected readonly gitService: GitService;
     protected readonly osOperationsService: OsOperationsService;
     protected readonly releaseService: ReleaseService;
-    protected readonly sshService: SshService;
-    constructor(taskService: TaskService, gitService: GitService, osOperationsService: OsOperationsService, releaseService: ReleaseService, sshService: SshService);
+    protected readonly sshManager: DeployerSshInterface;
+    constructor(taskService: TaskService, gitService: GitService, osOperationsService: OsOperationsService, releaseService: ReleaseService, sshManager: DeployerSshInterface);
     createGitTask(): void;
     createCleanupTask(): void;
     createReleaseTask(): void;
@@ -224,8 +248,8 @@ declare class HappyDeployer {
     constructor(serverService: ServerService, taskService: TaskService, coreTasksService: CoreTasksService, logger: LoggerService, processService: ProcessService, storage: StorageService, releaseService: ReleaseService);
     baseConfig<MetaType extends Record<string, unknown> = Record<string, unknown>>(settings: ServerConfigurationParametersWithoutName<MetaType>): HappyDeployer;
     addServer<MetaType extends Record<string, unknown> = Record<string, unknown>>(settings: ServerConfigurationParameters<MetaType>): HappyDeployer;
-    task<T extends Record<string, unknown> = Record<string, unknown>>(task: Task<T>): HappyDeployer;
-    task<T extends Record<string, unknown> = Record<string, unknown>>(name: string, executor: TaskExecutor<T>): HappyDeployer;
+    task<T extends Record<string, unknown> = Record<string, unknown>>(task: Task<T>, position?: TaskPosition): HappyDeployer;
+    task<T extends Record<string, unknown> = Record<string, unknown>>(name: string, executor: TaskExecutor<T>, position?: TaskPosition): HappyDeployer;
     deploy(server: string): Promise<void>;
     rollback(server: string): Promise<void>;
     protected createInternalDeployTasks(): void;

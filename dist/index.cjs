@@ -7,10 +7,10 @@ var path = require('node:path');
 var crypto = require('node:crypto');
 var child_process = require('node:child_process');
 var fs = require('node:fs');
-var nodeSsh = require('node-ssh');
 var format = require('date-fns/format/index.js');
 var parse = require('date-fns/parse/index.js');
 var isBefore = require('date-fns/isBefore/index.js');
+var nodeSsh = require('node-ssh');
 var merge = require('lodash.merge');
 
 /*! *****************************************************************************
@@ -123,7 +123,7 @@ let StorageService = class StorageService {
     }
     safelyGetFromCache(key) {
         const value = this.cacheService.getCached(key);
-        if (!value) {
+        if (value === null) {
             throw new Error(`[STORAGE] missing key "${key}"`);
         }
         return value;
@@ -207,6 +207,9 @@ let OsOperationsService = class OsOperationsService {
     getTempDirectoryPath() {
         return os.tmpdir();
     }
+    getHomeDirectoryPath() {
+        return os.homedir();
+    }
     getRandomBuildDirectory() {
         return path.resolve(this.getTempDirectoryPath(), crypto.randomUUID());
     }
@@ -231,7 +234,7 @@ let OsOperationsService = class OsOperationsService {
                     return;
                 }
                 else {
-                    resolve();
+                    resolve(stdout);
                 }
             });
         });
@@ -243,6 +246,19 @@ let OsOperationsService = class OsOperationsService {
     removeDirectory(path) {
         this.logger.verbose('removing directory', path);
         return fs.rmSync(path, { recursive: true });
+    }
+    async getDirectoryContents(path) {
+        const contents = await fs.promises.readdir(path, { withFileTypes: true });
+        return contents.map((entry) => {
+            let type = 'file';
+            if (entry.isDirectory()) {
+                type = 'directory';
+            }
+            return {
+                name: entry.name,
+                type,
+            };
+        });
     }
 };
 OsOperationsService = __decorate([
@@ -272,14 +288,19 @@ ProcessService = __decorate([
 ], ProcessService);
 var ProcessService$1 = ProcessService;
 
-let SshService = class SshService {
+const TIME_FORMAT = 'yyyyMMddHHmmss';
+
+let Ssh2SshService = class Ssh2SshService {
     logger;
     processService;
+    osOperationsService;
+    serviceName = 'SSH2 (node-ssh) service';
     sshClient = new nodeSsh.NodeSSH();
     connected = false;
-    constructor(logger, processService) {
+    constructor(logger, processService, osOperationsService) {
         this.logger = logger;
         this.processService = processService;
+        this.osOperationsService = osOperationsService;
     }
     async executeRemoteCommand(command) {
         const { stdout, stderr, code } = await this.sshClient.execCommand(command);
@@ -289,6 +310,7 @@ let SshService = class SshService {
             this.logger.error('[SSH]', `remote command "${command}" failed`);
             this.processService.errorExit(1);
         }
+        return stdout;
     }
     async uploadDirectory(localPath, remotePath) {
         const status = await this.sshClient.putDirectory(localPath, remotePath, {
@@ -324,31 +346,225 @@ let SshService = class SshService {
         });
     }
     async connect(credentials) {
+        if (!credentials.password && !credentials.privateKey && !credentials.privateKeyPath) {
+            return this.connectWithEnumerationOfSshKeys(credentials);
+        }
         await this.sshClient.connect(credentials);
         this.connected = true;
     }
     async disconnect() {
         this.sshClient.dispose();
     }
+    async readRemoteSymlink(path) {
+        const sftp = await this.sshClient.requestSFTP();
+        return new Promise((resolve, reject) => {
+            sftp.readlink(path, (err, target) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                this.log(`Symlink value is "${target}"`);
+                resolve(target.trim());
+            });
+        });
+    }
+    async connectWithEnumerationOfSshKeys(credentials) {
+        const homeDir = this.osOperationsService.getHomeDirectoryPath();
+        const sshDir = path.join(homeDir, '.ssh');
+        const sshDirContents = await this.osOperationsService.getDirectoryContents(sshDir);
+        const FORBIDDEN_VALUES = ['known_hosts', 'authorized_keys'];
+        const sshPrivateKeysPaths = sshDirContents.reduce((total, entry) => {
+            if (entry.type === 'file' && !FORBIDDEN_VALUES.includes(entry.name) && !entry.name.endsWith('.pub')) {
+                total.push(path.join(sshDir, entry.name));
+            }
+            return total;
+        }, []);
+        for (const keyPath of sshPrivateKeysPaths) {
+            try {
+                this.log(`trying to connect with ${keyPath}`, 'verbose');
+                await this.sshClient.connect({
+                    ...credentials,
+                    privateKeyPath: keyPath,
+                });
+                this.connected = true;
+                return;
+            }
+            catch (e) {
+                this.log(`failed to connect with ${keyPath}`, 'verbose');
+            }
+        }
+        throw new Error('All SSH keys failed to connect');
+    }
+    log(message, level = 'info') {
+        this.logger[level]('[SSH]', message);
+    }
 };
-SshService = __decorate([
+Ssh2SshService = __decorate([
     inversify.injectable(),
     __param(0, inversify.inject(LoggerService$1)),
     __param(1, inversify.inject(ProcessService$1)),
+    __param(2, inversify.inject(OsOperationsService$1)),
     __metadata("design:paramtypes", [LoggerService$1,
-        ProcessService$1])
-], SshService);
-var SshService$1 = SshService;
+        ProcessService$1,
+        OsOperationsService$1])
+], Ssh2SshService);
+var Ssh2SshService$1 = Ssh2SshService;
 
-const TIME_FORMAT = 'yyyyMMddHHmmss';
+let ShellSshService = class ShellSshService {
+    osOperationsService;
+    logger;
+    processService;
+    serviceName = 'System ssh service';
+    credentials = null;
+    constructor(osOperationsService, logger, processService) {
+        this.osOperationsService = osOperationsService;
+        this.logger = logger;
+        this.processService = processService;
+    }
+    async connect(credentials) {
+        this.log('it seems like node.js ssh failed to connect to remote server', 'warn');
+        this.log('using your system\'s SSH: "password" setting is ignored', 'warn');
+        this.log('trying to connect and immediately exit', 'verbose');
+        this.credentials = credentials;
+        const sshCommand = this.createSshRemoteCommandString('exit');
+        await this.osOperationsService.execute(sshCommand, []);
+    }
+    disconnect() {
+        this.log('no need to disconnect in shell mode', 'verbose');
+        return undefined;
+    }
+    async executeRemoteCommand(command) {
+        const sshCommand = this.createSshRemoteCommandString(command);
+        return this.osOperationsService.execute(sshCommand, []);
+    }
+    async getDirectoriesList(remotePath) {
+        const sshCommand = this.createSshRemoteCommandString(`cd ${remotePath} && ls -FlA`);
+        const commandResult = await this.osOperationsService.execute(sshCommand, []);
+        return this.getDirectoriesFromLsFlaResult(commandResult);
+    }
+    async uploadDirectory(localPath, remotePath) {
+        if (!this.credentials || !this.credentials.username || !this.credentials.host) {
+            this.log('no required SSH credentials found in ShellSshService');
+            this.processService.errorExit();
+            throw new Error();
+        }
+        const { username, host, port = 22 } = this.credentials;
+        const command = `scp -r -P ${port} ${localPath}/* ${username}@${host}:${remotePath}`;
+        await this.osOperationsService.execute(command, []);
+    }
+    async readRemoteSymlink(path) {
+        const sshCommand = this.createSshRemoteCommandString(`readlink ${path}`);
+        const target = await this.osOperationsService.execute(sshCommand, []);
+        this.log(`Symlink value is "${target}"`);
+        return target.trim();
+    }
+    getDirectoriesFromLsFlaResult(commandResult) {
+        const lines = commandResult.split('\n');
+        const directories = [];
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i];
+            if (!line) {
+                continue;
+            }
+            const split = line.split(/\s+/);
+            const name = split[split.length - 1];
+            if (!name.endsWith('/')) {
+                continue;
+            }
+            directories.push(name.trim().slice(0, -1));
+        }
+        return directories;
+    }
+    createSshRemoteCommandString(command) {
+        if (!this.credentials || !this.credentials.username || !this.credentials.host) {
+            this.log('no required SSH credentials found in ShellSshService');
+            this.processService.errorExit();
+            throw new Error();
+        }
+        const { username, host, port = 22 } = this.credentials;
+        return `ssh ${username}@${host} -p ${port} '${command}'`;
+    }
+    log(message, level = 'info') {
+        this.logger[level]('[SSH-SHELL]', message);
+    }
+};
+ShellSshService = __decorate([
+    inversify.injectable(),
+    __param(0, inversify.inject(OsOperationsService$1)),
+    __param(1, inversify.inject(LoggerService$1)),
+    __param(2, inversify.inject(ProcessService$1)),
+    __metadata("design:paramtypes", [OsOperationsService$1,
+        LoggerService$1,
+        ProcessService$1])
+], ShellSshService);
+var ShellSshService$1 = ShellSshService;
+
+let SshManager = class SshManager {
+    ssh2SshService;
+    shellSshService;
+    logger;
+    processService;
+    serviceName = 'SshManager';
+    services = [];
+    service = null;
+    constructor(ssh2SshService, shellSshService, logger, processService) {
+        this.ssh2SshService = ssh2SshService;
+        this.shellSshService = shellSshService;
+        this.logger = logger;
+        this.processService = processService;
+        this.services = [this.ssh2SshService, this.shellSshService];
+    }
+    async connect(credentials) {
+        for (const service of this.services) {
+            try {
+                await service.connect(credentials);
+                this.logger.verbose('ssh manager: using', service.serviceName);
+                this.service = service;
+                return;
+            }
+            catch (e) {
+                this.logger.verbose(service.serviceName, 'failed to connect');
+            }
+        }
+        this.logger.error('SSH connection with all services failed');
+        this.processService.errorExit();
+    }
+    async disconnect() {
+        return this.service.disconnect();
+    }
+    async executeRemoteCommand(command) {
+        return this.service.executeRemoteCommand(command);
+    }
+    async getDirectoriesList(remotePath) {
+        return this.service.getDirectoriesList(remotePath);
+    }
+    async uploadDirectory(localPath, remotePath) {
+        return this.service.uploadDirectory(localPath, remotePath);
+    }
+    async readRemoteSymlink(path) {
+        return this.service.readRemoteSymlink(path);
+    }
+};
+SshManager = __decorate([
+    inversify.injectable(),
+    __param(0, inversify.inject(Ssh2SshService$1)),
+    __param(1, inversify.inject(ShellSshService$1)),
+    __param(2, inversify.inject(LoggerService$1)),
+    __param(3, inversify.inject(ProcessService$1)),
+    __metadata("design:paramtypes", [Ssh2SshService$1,
+        ShellSshService$1,
+        LoggerService$1,
+        ProcessService$1])
+], SshManager);
+var SshManager$1 = SshManager;
 
 let ReleaseService = class ReleaseService {
-    sshService;
+    sshManager;
     storage;
     logger;
     process;
-    constructor(sshService, storage, logger, process) {
-        this.sshService = sshService;
+    constructor(sshManager, storage, logger, process) {
+        this.sshManager = sshManager;
         this.storage = storage;
         this.logger = logger;
         this.process = process;
@@ -370,12 +586,12 @@ let ReleaseService = class ReleaseService {
         this.storage.setReleasePath(releasePath);
     }
     async createRelease() {
-        await this.sshService.executeRemoteCommand(`mkdir -p ${this.storage.getReleasePath()}`);
+        await this.sshManager.executeRemoteCommand(`mkdir -p ${this.storage.getReleasePath()}`);
     }
     async uploadRelease(serverConfig) {
         const releasePath = this.getCurrentReleasePath();
         const dirToUpload = path.resolve(serverConfig.tempDirectory, serverConfig.dirToCopy);
-        await this.sshService.uploadDirectory(dirToUpload, releasePath);
+        await this.sshManager.uploadDirectory(dirToUpload, releasePath);
     }
     getCurrentReleaseName() {
         return this.storage.getReleaseName();
@@ -396,14 +612,20 @@ let ReleaseService = class ReleaseService {
     async findCurrentAndPreviousReleaseForRollback(serverConfig) {
         const allOtherReleases = await this.getAllOtherReleases(serverConfig);
         const sorted = [...allOtherReleases].sort(serverConfig.releaseNameComparer);
-        if (sorted.length < 2) {
-            this.logger.error(`cannot perform rollback with ${sorted.length} releases, 2 required`);
+        const currentRelease = await this.getReleaseFromCurrentSymlinkOnRemote(serverConfig);
+        const idx = sorted.indexOf(currentRelease);
+        if (idx === -1) {
+            this.logger.error('cannot perform rollback: current release not found in releases dir');
+            this.process.errorExit();
+            return;
+        }
+        if (idx === sorted.length - 1) {
+            this.logger.error(`cannot perform rollback: current release "${currentRelease}" is last`);
             this.process.errorExit(1);
             return;
         }
-        const [toDelete, newCurrent] = sorted;
-        this.storage.setReleaseName(newCurrent);
-        this.storage.setPreviousReleaseName(toDelete);
+        this.storage.setReleaseName(sorted[idx + 1]);
+        this.storage.setPreviousReleaseName(currentRelease);
     }
     async deleteReleaseForRollback(serverConfig) {
         if (!serverConfig.deployer.deleteOnRollback) {
@@ -416,26 +638,30 @@ let ReleaseService = class ReleaseService {
     async createSymlinkForCurrentRelease(serverConfig) {
         const currentRelease = this.getCurrentReleaseName();
         const settings = serverConfig.deployer;
-        await this.sshService.executeRemoteCommand(`cd ${serverConfig.deployPath} && rm -f ./${settings.currentReleaseSymlinkName} && ln -s ./${settings.releasesDirName}/${currentRelease} ./${settings.currentReleaseSymlinkName}`);
+        await this.sshManager.executeRemoteCommand(`cd ${serverConfig.deployPath} && rm -f ./${settings.currentReleaseSymlinkName} && ln -s ./${settings.releasesDirName}/${currentRelease} ./${settings.currentReleaseSymlinkName}`);
     }
     async getAllOtherReleases(serverConfig) {
         const settings = serverConfig.deployer;
-        return this.sshService.getDirectoriesList(path.join(serverConfig.deployPath, settings.releasesDirName));
+        return this.sshManager.getDirectoriesList(path.join(serverConfig.deployPath, settings.releasesDirName));
     }
     async deleteRelease(serverConfig, releaseName) {
         this.logger.info(`deleting release ${releaseName}`);
         const releasePath = path.join(serverConfig.deployPath, serverConfig.deployer.releasesDirName, releaseName);
-        await this.sshService.executeRemoteCommand(`rm -rf ${releasePath}`);
+        await this.sshManager.executeRemoteCommand(`rm -rf ${releasePath}`);
+    }
+    async getReleaseFromCurrentSymlinkOnRemote(serverConfig) {
+        const currentSymlinkFullPath = path.join(serverConfig.deployPath, serverConfig.deployer.currentReleaseSymlinkName);
+        const releasePath = await this.sshManager.readRemoteSymlink(currentSymlinkFullPath);
+        return path.basename(releasePath);
     }
 };
 ReleaseService = __decorate([
     inversify.injectable(),
-    __param(0, inversify.inject(SshService$1)),
+    __param(0, inversify.inject(SshManager$1)),
     __param(1, inversify.inject(StorageService$1)),
     __param(2, inversify.inject(LoggerService$1)),
     __param(3, inversify.inject(ProcessService$1)),
-    __metadata("design:paramtypes", [SshService$1,
-        StorageService$1,
+    __metadata("design:paramtypes", [Object, StorageService$1,
         LoggerService$1,
         ProcessService$1])
 ], ReleaseService);
@@ -534,28 +760,83 @@ ServerService = __decorate([
 ], ServerService);
 var ServerService$1 = ServerService;
 
+const taskPositions = {
+    // Task goes before SSH tasks
+    ORDER: 'order',
+    // Task goes first. If there were other task with FIRST earlier, it will be moved
+    FIRST: 'first',
+    // Task goes after release is uploaded, but before updating symlink
+    AFTER_RELEASE_UPLOAD: 'after-release-upload',
+    // Add directly to tasks array
+    DIRECT: 'direct',
+};
+const DEFAULT_TASK_POSITION = taskPositions.ORDER;
+
+const GIT_CORE_TASK_NAME = 'git:clone-branch-pull';
+const CLEANUP_CORE_TASK_NAME = 'cleanup';
+const RELEASES_CREATE_DIR_CORE_TASK_NAME = 'releases:create:directory';
+const RELEASES_UPLOAD_CORE_TASK_NAME = 'releases:upload';
+const SSH_CONNECT_CORE_TASK_NAME = 'ssh:connect';
+const SSH_DISCONNECT_CORE_TASK_NAME = 'ssh:disconnect';
+const RELEASES_CLEANUP_CORE_TASK_NAME = 'releases:cleanup';
+const RELEASES_UPDATE_SYMLINK_CORE_TASK_NAME = 'releases:update-symlink';
+const RELEASES_ROLLBACK_FIND_RELEASES_CORE_TASK_NAME = 'releases:rollback:find-releases';
+const RELEASES_ROLLBACK_DELETE_IF_NEED_CORE_TASK_NAME = 'releases:rollback:delete-if-need';
+
 let TaskService = class TaskService {
     serverService;
     logger;
     processService;
     osOperationsService;
-    sshService;
+    sshManager;
     storage;
     tasks = [];
-    constructor(serverService, logger, processService, osOperationsService, sshService, storage) {
+    taskGroups = {
+        [taskPositions.FIRST]: null,
+        [taskPositions.ORDER]: [],
+        [taskPositions.AFTER_RELEASE_UPLOAD]: [],
+    };
+    constructor(serverService, logger, processService, osOperationsService, sshManager, storage) {
         this.serverService = serverService;
         this.logger = logger;
         this.processService = processService;
         this.osOperationsService = osOperationsService;
-        this.sshService = sshService;
+        this.sshManager = sshManager;
         this.storage = storage;
     }
-    addTask(name, executor, unshift = false) {
-        if (this.tasks.some((task) => task.name === name)) {
+    assembleTasksArray() {
+        const { first, [taskPositions.AFTER_RELEASE_UPLOAD]: afterRelease, order } = this.taskGroups;
+        this.tasks.unshift(...order);
+        first && this.tasks.unshift(first);
+        if (!afterRelease.length)
+            return;
+        const releaseTaskPos = this.tasks.findIndex((task) => task.name === RELEASES_UPLOAD_CORE_TASK_NAME);
+        this.tasks.splice(releaseTaskPos + 1, 0, ...afterRelease);
+    }
+    addTask(name, executor, position = DEFAULT_TASK_POSITION) {
+        const newTask = this.createTask(name, executor);
+        if (position === taskPositions.DIRECT) {
+            if (this.tasks.some((task) => task.name === name)) {
+                this.logger.warn(`Duplicate task name "${name}", new one is skipped`);
+                return;
+            }
+            this.tasks.push(newTask);
+            return;
+        }
+        if (this.taskGroups[taskPositions.FIRST]?.name === name ||
+            this.taskGroups[taskPositions.ORDER].some((task) => task.name === name) ||
+            this.taskGroups[taskPositions.AFTER_RELEASE_UPLOAD].some((task) => task.name === name)) {
             this.logger.warn(`Duplicate task name "${name}", new one is skipped`);
             return;
         }
-        this.tasks[unshift ? 'unshift' : 'push'](this.createTask(name, executor));
+        if (position === taskPositions.FIRST) {
+            if (this.taskGroups.first && !this.taskGroups.order.some((task) => task.name === name)) {
+                this.taskGroups.order.unshift(this.taskGroups.first);
+            }
+            this.taskGroups.first = newTask;
+            return;
+        }
+        this.taskGroups[position].push(newTask);
     }
     getTask(taskName) {
         return this.tasks.find((task) => task.name === taskName);
@@ -594,11 +875,24 @@ let TaskService = class TaskService {
         }
         return ('name' in value && typeof value.name === 'string' && 'executor' in value && typeof value.executor === 'function');
     }
+    getAssembledTasks() {
+        return this.tasks;
+    }
+    clearAssembledTasks() {
+        this.tasks = [];
+    }
+    clearTasksGroups() {
+        this.taskGroups = {
+            [taskPositions.FIRST]: null,
+            [taskPositions.ORDER]: [],
+            [taskPositions.AFTER_RELEASE_UPLOAD]: [],
+        };
+    }
     getTaskExecutorContext(serverConfig) {
         return {
             serverConfig,
             execLocal: this.osOperationsService.execute.bind(this.osOperationsService),
-            execRemote: this.sshService.executeRemoteCommand.bind(this.sshService),
+            execRemote: this.sshManager.executeRemoteCommand.bind(this.sshManager),
             logger: this.logger,
             action: this.storage.getDeployerAction(),
             releaseName: this.storage.getReleaseName(),
@@ -613,14 +907,12 @@ TaskService = __decorate([
     __param(1, inversify.inject(LoggerService$1)),
     __param(2, inversify.inject(ProcessService$1)),
     __param(3, inversify.inject(OsOperationsService$1)),
-    __param(4, inversify.inject(SshService$1)),
+    __param(4, inversify.inject(SshManager$1)),
     __param(5, inversify.inject(StorageService$1)),
     __metadata("design:paramtypes", [ServerService$1,
         LoggerService$1,
         ProcessService$1,
-        OsOperationsService$1,
-        SshService$1,
-        StorageService$1])
+        OsOperationsService$1, Object, StorageService$1])
 ], TaskService);
 var TaskService$1 = TaskService;
 
@@ -647,7 +939,7 @@ let GitService = class GitService {
         return this.logger.info('[GIT]', ...messages);
     }
     async runGitCommand(args, runIn) {
-        return this.osOperationsService.execute('git', args, runIn);
+        await this.osOperationsService.execute('git', args, runIn);
     }
 };
 GitService = __decorate([
@@ -664,16 +956,16 @@ let CoreTasksService = class CoreTasksService {
     gitService;
     osOperationsService;
     releaseService;
-    sshService;
-    constructor(taskService, gitService, osOperationsService, releaseService, sshService) {
+    sshManager;
+    constructor(taskService, gitService, osOperationsService, releaseService, sshManager) {
         this.taskService = taskService;
         this.gitService = gitService;
         this.osOperationsService = osOperationsService;
         this.releaseService = releaseService;
-        this.sshService = sshService;
+        this.sshManager = sshManager;
     }
     createGitTask() {
-        this.taskService.addTask('git:clone-branch-pull', async ({ serverConfig: { repository, tempDirectory, branch }, logger }) => {
+        this.taskService.addTask(GIT_CORE_TASK_NAME, async ({ serverConfig: { repository, tempDirectory, branch }, logger }) => {
             if (!repository) {
                 logger.info('"repository" key is undefined, skipping task');
                 return;
@@ -681,50 +973,50 @@ let CoreTasksService = class CoreTasksService {
             await this.gitService.cloneRepository(repository, tempDirectory);
             await this.gitService.changeBranch(tempDirectory, branch);
             await this.gitService.pull(tempDirectory);
-        }, true);
+        }, taskPositions.FIRST);
     }
     createCleanupTask() {
-        this.taskService.addTask('cleanup', async ({ serverConfig: { tempDirectory } }) => {
+        this.taskService.addTask(CLEANUP_CORE_TASK_NAME, async ({ serverConfig: { tempDirectory } }) => {
             this.osOperationsService.removeDirectory(tempDirectory);
-        });
+        }, taskPositions.DIRECT);
     }
     createReleaseTask() {
-        this.taskService.addTask('releases:create:directory', async () => {
+        this.taskService.addTask(RELEASES_CREATE_DIR_CORE_TASK_NAME, async () => {
             await this.releaseService.createRelease();
-        });
+        }, taskPositions.DIRECT);
     }
     createUploadReleaseTask() {
-        this.taskService.addTask('releases:upload', async ({ serverConfig }) => {
+        this.taskService.addTask(RELEASES_UPLOAD_CORE_TASK_NAME, async ({ serverConfig }) => {
             await this.releaseService.uploadRelease(serverConfig);
-        });
+        }, taskPositions.DIRECT);
     }
     createSshConnectTask() {
-        this.taskService.addTask('ssh:connect', async ({ serverConfig }) => {
-            await this.sshService.connect(serverConfig.ssh);
-        });
+        this.taskService.addTask(SSH_CONNECT_CORE_TASK_NAME, async ({ serverConfig }) => {
+            await this.sshManager.connect(serverConfig.ssh);
+        }, taskPositions.DIRECT);
     }
     createSshDisconnectTask() {
-        this.taskService.addTask('ssh:disconnect', async () => {
-            await this.sshService.disconnect();
-        });
+        this.taskService.addTask(SSH_DISCONNECT_CORE_TASK_NAME, async () => {
+            await this.sshManager.disconnect();
+        }, taskPositions.DIRECT);
     }
     createCleanUpReleasesTask() {
-        this.taskService.addTask('releases:cleanup', async ({ serverConfig }) => {
+        this.taskService.addTask(RELEASES_CLEANUP_CORE_TASK_NAME, async ({ serverConfig }) => {
             await this.releaseService.cleanUpReleases(serverConfig);
-        });
+        }, taskPositions.DIRECT);
     }
     createUpdateSymlinkTask() {
-        this.taskService.addTask('releases:update-symlink', async ({ serverConfig }) => {
+        this.taskService.addTask(RELEASES_UPDATE_SYMLINK_CORE_TASK_NAME, async ({ serverConfig }) => {
             await this.releaseService.createSymlinkForCurrentRelease(serverConfig);
-        });
+        }, taskPositions.DIRECT);
     }
     createRollbackFindReleasesTask() {
-        this.taskService.addTask('releases:rollback:find-releases', async ({ serverConfig }) => {
+        this.taskService.addTask(RELEASES_ROLLBACK_FIND_RELEASES_CORE_TASK_NAME, async ({ serverConfig }) => {
             await this.releaseService.findCurrentAndPreviousReleaseForRollback(serverConfig);
         });
     }
     createRemoveRollbackRelease() {
-        this.taskService.addTask('releases:rollback:delete-if-need', async ({ serverConfig }) => {
+        this.taskService.addTask(RELEASES_ROLLBACK_DELETE_IF_NEED_CORE_TASK_NAME, async ({ serverConfig }) => {
             await this.releaseService.deleteReleaseForRollback(serverConfig);
         });
     }
@@ -735,12 +1027,11 @@ CoreTasksService = __decorate([
     __param(1, inversify.inject(GitService$1)),
     __param(2, inversify.inject(OsOperationsService$1)),
     __param(3, inversify.inject(ReleaseService$1)),
-    __param(4, inversify.inject(SshService$1)),
+    __param(4, inversify.inject(SshManager$1)),
     __metadata("design:paramtypes", [TaskService$1,
         GitService$1,
         OsOperationsService$1,
-        ReleaseService$1,
-        SshService$1])
+        ReleaseService$1, Object])
 ], CoreTasksService);
 var CoreTasksService$1 = CoreTasksService;
 
@@ -775,12 +1066,12 @@ let HappyDeployer = class HappyDeployer {
         this.changeStepStatus(RequiredSteps.AT_LEAST_ONE_SERVER, true);
         return this;
     }
-    task(taskOrName, executor) {
+    task(taskOrName, executorOrPosition, position) {
         if (this.taskService.isTask(taskOrName)) {
-            this.taskService.addTask(taskOrName.name, taskOrName.executor);
+            this.taskService.addTask(taskOrName.name, taskOrName.executor, position);
         }
-        if (typeof taskOrName === 'string' && executor !== undefined) {
-            this.taskService.addTask(taskOrName, executor);
+        if (typeof taskOrName === 'string' && executorOrPosition !== undefined) {
+            this.taskService.addTask(taskOrName, executorOrPosition, position);
         }
         return this;
     }
@@ -790,6 +1081,7 @@ let HappyDeployer = class HappyDeployer {
         this.storage.setCurrentConfig(config);
         this.releaseService.createReleaseNameAndPath(config);
         this.createInternalDeployTasks();
+        this.taskService.assembleTasksArray();
         this.checkRequiredSteps();
         this.logger.info('Start deploying');
         await this.taskService.runAllTasks(server);
@@ -797,6 +1089,9 @@ let HappyDeployer = class HappyDeployer {
     }
     async rollback(server) {
         this.storage.setDeployerAction('rollback');
+        // Stubbing releaseName and releasePath for correct work
+        this.storage.setReleaseName('');
+        this.storage.setReleasePath('');
         const config = this.serverService.getServerConfig(server);
         this.storage.setCurrentConfig(config);
         this.createInternalRollbackTasks();
@@ -863,7 +1158,9 @@ function createContainer() {
     container.bind(OsOperationsService$1).to(OsOperationsService$1);
     container.bind(ServerService$1).to(ServerService$1);
     container.bind(TaskService$1).to(TaskService$1);
-    container.bind(SshService$1).to(SshService$1);
+    container.bind(Ssh2SshService$1).to(Ssh2SshService$1);
+    container.bind(ShellSshService$1).to(ShellSshService$1);
+    container.bind(SshManager$1).to(SshManager$1);
     container.bind(ReleaseService$1).to(ReleaseService$1);
     container.bind(ProcessService$1).to(ProcessService$1);
     container.bind(StorageService$1).to(StorageService$1);
