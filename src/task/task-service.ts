@@ -9,6 +9,7 @@ import StorageService from '../storage/storage-service.js';
 import SshManager from '../ssh/ssh-manager.js';
 import type { DeployerSshInterface } from '../ssh/types.js';
 import { TASK_POSITIONS } from './const.js';
+import { RELEASES_UPLOAD_CORE_TASK_NAME } from '../core-tasks/const.js';
 
 @injectable()
 export default class TaskService {
@@ -34,8 +35,7 @@ export default class TaskService {
     first && this.tasks.unshift(first);
     if (!afterRelease.length) return;
 
-    // @todo change to constant
-    const releaseTaskPos = this.tasks.findIndex((task) => task.name === 'releases:upload');
+    const releaseTaskPos = this.tasks.findIndex((task) => task.name === RELEASES_UPLOAD_CORE_TASK_NAME);
     this.tasks.splice(releaseTaskPos + 1, 0, ...afterRelease);
   }
 

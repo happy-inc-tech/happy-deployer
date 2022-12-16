@@ -4,6 +4,12 @@ import TaskService from '../task-service.js';
 import StorageService from '../../storage/storage-service.js';
 import HappyDeployer from '../../deployer/deployer-service.js';
 import CoreTasksService from '../../core-tasks/core-tasks-service.js';
+import {
+  GIT_CORE_TASK_NAME,
+  RELEASES_UPDATE_SYMLINK_CORE_TASK_NAME,
+  RELEASES_UPLOAD_CORE_TASK_NAME,
+  SSH_DISCONNECT_CORE_TASK_NAME,
+} from '../../core-tasks/const.js';
 
 vi.stubGlobal('process', {
   exit: vi.fn(),
@@ -91,8 +97,8 @@ describe('task-service', () => {
     const assembled = taskService.getAssembledTasks();
 
     expect(assembled.length).toEqual(4);
-    expect(assembled[0].name).toEqual('git:clone-branch-pull');
-    expect(assembled[3].name).toEqual('releases:upload');
+    expect(assembled[0].name).toEqual(GIT_CORE_TASK_NAME);
+    expect(assembled[3].name).toEqual(RELEASES_UPLOAD_CORE_TASK_NAME);
   });
 
   it('correctly adds tasks after release upload', async () => {
@@ -105,19 +111,23 @@ describe('task-service', () => {
     taskService.addTask(...tasks[1]);
     taskService.addTask(...tasks[2], 'after-release');
     taskService.addTask(...tasks[3], 'after-release');
+    coreTaskService.createUpdateSymlinkTask();
     taskService.assembleTasksArray();
 
     const assembledTasksNames = taskService.getAssembledTasks().map((task) => task.name);
 
-    expect(assembledTasksNames.length).toEqual(7);
+    console.error(assembledTasksNames);
+
+    expect(assembledTasksNames.length).toEqual(8);
     expect(assembledTasksNames).toStrictEqual([
-      'git:clone-branch-pull',
+      GIT_CORE_TASK_NAME,
       tasks[0][0],
       tasks[1][0],
-      'releases:upload',
+      RELEASES_UPLOAD_CORE_TASK_NAME,
       tasks[2][0],
       tasks[3][0],
-      'ssh:disconnect',
+      SSH_DISCONNECT_CORE_TASK_NAME,
+      RELEASES_UPDATE_SYMLINK_CORE_TASK_NAME,
     ]);
   });
 });
