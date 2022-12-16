@@ -10,6 +10,7 @@ import {
   RELEASES_UPLOAD_CORE_TASK_NAME,
   SSH_DISCONNECT_CORE_TASK_NAME,
 } from '../../core-tasks/const.js';
+import { taskPositions } from '../const.js';
 
 vi.stubGlobal('process', {
   exit: vi.fn(),
@@ -74,7 +75,7 @@ describe('task-service', () => {
 
   it('test order first', async () => {
     taskService.clearAssembledTasks();
-    taskService.addTask(...tasks[2], 'first');
+    taskService.addTask(...tasks[2], taskPositions.FIRST);
     taskService.assembleTasksArray();
     expect(taskService.getAssembledTasks().length).toEqual(3);
     expect(taskService.getAssembledTasks()[0].name).toEqual(tasks[2][0]);
@@ -82,8 +83,8 @@ describe('task-service', () => {
 
   it('reorder first if added another', async () => {
     taskService.clearAssembledTasks();
-    taskService.addTask(...tasks[2], 'first');
-    taskService.addTask(...tasks[3], 'first');
+    taskService.addTask(...tasks[2], taskPositions.FIRST);
+    taskService.addTask(...tasks[3], taskPositions.FIRST);
     taskService.assembleTasksArray();
     expect(taskService.getAssembledTasks().length).toEqual(4);
     expect(taskService.getAssembledTasks()[0].name).toEqual('another-first-task');
@@ -109,8 +110,8 @@ describe('task-service', () => {
     coreTaskService.createSshDisconnectTask();
     taskService.addTask(...tasks[0]);
     taskService.addTask(...tasks[1]);
-    taskService.addTask(...tasks[2], 'after-release');
-    taskService.addTask(...tasks[3], 'after-release');
+    taskService.addTask(...tasks[2], taskPositions.AFTER_RELEASE_UPLOAD);
+    taskService.addTask(...tasks[3], taskPositions.AFTER_RELEASE_UPLOAD);
     coreTaskService.createUpdateSymlinkTask();
     taskService.assembleTasksArray();
 

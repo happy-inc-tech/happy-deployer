@@ -8,16 +8,16 @@ import OsOperationsService from '../os-operations/os-operations-service.js';
 import StorageService from '../storage/storage-service.js';
 import SshManager from '../ssh/ssh-manager.js';
 import type { DeployerSshInterface } from '../ssh/types.js';
-import { TASK_POSITIONS } from './const.js';
+import { DEFAULT_TASK_POSITION, taskPositions } from './const.js';
 import { RELEASES_UPLOAD_CORE_TASK_NAME } from '../core-tasks/const.js';
 
 @injectable()
 export default class TaskService {
   protected tasks: Task[] = [];
   protected taskGroups: TaskGroups = {
-    [TASK_POSITIONS.FIRST]: null,
-    [TASK_POSITIONS.ORDER]: [],
-    [TASK_POSITIONS.AFTER_RELEASE]: [],
+    [taskPositions.FIRST]: null,
+    [taskPositions.ORDER]: [],
+    [taskPositions.AFTER_RELEASE_UPLOAD]: [],
   };
 
   constructor(
@@ -30,7 +30,7 @@ export default class TaskService {
   ) {}
 
   public assembleTasksArray() {
-    const { first, ['after-release']: afterRelease, order } = this.taskGroups;
+    const { first, [taskPositions.AFTER_RELEASE_UPLOAD]: afterRelease, order } = this.taskGroups;
     this.tasks.unshift(...order);
     first && this.tasks.unshift(first);
     if (!afterRelease.length) return;
@@ -39,10 +39,10 @@ export default class TaskService {
     this.tasks.splice(releaseTaskPos + 1, 0, ...afterRelease);
   }
 
-  public addTask(name: string, executor: TaskExecutor<any>, position: TaskPosition = TASK_POSITIONS.ORDER): void {
+  public addTask(name: string, executor: TaskExecutor<any>, position: TaskPosition = DEFAULT_TASK_POSITION): void {
     const newTask = this.createTask(name, executor);
 
-    if (position === TASK_POSITIONS.DIRECT) {
+    if (position === taskPositions.DIRECT) {
       if (this.tasks.some((task) => task.name === name)) {
         this.logger.warn(`Duplicate task name "${name}", new one is skipped`);
         return;
@@ -52,15 +52,15 @@ export default class TaskService {
     }
 
     if (
-      this.taskGroups[TASK_POSITIONS.FIRST]?.name === name ||
-      this.taskGroups[TASK_POSITIONS.ORDER].some((task) => task.name === name) ||
-      this.taskGroups[TASK_POSITIONS.AFTER_RELEASE].some((task) => task.name === name)
+      this.taskGroups[taskPositions.FIRST]?.name === name ||
+      this.taskGroups[taskPositions.ORDER].some((task) => task.name === name) ||
+      this.taskGroups[taskPositions.AFTER_RELEASE_UPLOAD].some((task) => task.name === name)
     ) {
       this.logger.warn(`Duplicate task name "${name}", new one is skipped`);
       return;
     }
 
-    if (position === TASK_POSITIONS.FIRST) {
+    if (position === taskPositions.FIRST) {
       if (this.taskGroups.first && !this.taskGroups.order.some((task) => task.name === name)) {
         this.taskGroups.order.unshift(this.taskGroups.first);
       }
@@ -125,9 +125,9 @@ export default class TaskService {
 
   public clearTasksGroups() {
     this.taskGroups = {
-      first: null,
-      order: [],
-      'after-release': [],
+      [taskPositions.FIRST]: null,
+      [taskPositions.ORDER]: [],
+      [taskPositions.AFTER_RELEASE_UPLOAD]: [],
     };
   }
 

@@ -5,7 +5,7 @@ import OsOperationsService from '../os-operations/os-operations-service.js';
 import ReleaseService from '../release/release-service.js';
 import SshManager from '../ssh/ssh-manager.js';
 import type { DeployerSshInterface } from '../ssh/types.js';
-import { TASK_POSITIONS } from '../task/const.js';
+import { taskPositions } from '../task/const.js';
 import {
   CLEANUP_CORE_TASK_NAME,
   GIT_CORE_TASK_NAME,
@@ -41,7 +41,7 @@ export default class CoreTasksService {
         await this.gitService.changeBranch(tempDirectory, branch);
         await this.gitService.pull(tempDirectory);
       },
-      TASK_POSITIONS.FIRST,
+      taskPositions.FIRST,
     );
   }
 
@@ -51,7 +51,7 @@ export default class CoreTasksService {
       async ({ serverConfig: { tempDirectory } }) => {
         this.osOperationsService.removeDirectory(tempDirectory);
       },
-      TASK_POSITIONS.DIRECT,
+      taskPositions.DIRECT,
     );
   }
 
@@ -61,7 +61,7 @@ export default class CoreTasksService {
       async () => {
         await this.releaseService.createRelease();
       },
-      TASK_POSITIONS.DIRECT,
+      taskPositions.DIRECT,
     );
   }
 
@@ -71,7 +71,7 @@ export default class CoreTasksService {
       async ({ serverConfig }) => {
         await this.releaseService.uploadRelease(serverConfig);
       },
-      TASK_POSITIONS.DIRECT,
+      taskPositions.DIRECT,
     );
   }
 
@@ -81,7 +81,7 @@ export default class CoreTasksService {
       async ({ serverConfig }) => {
         await this.sshManager.connect(serverConfig.ssh);
       },
-      TASK_POSITIONS.DIRECT,
+      taskPositions.DIRECT,
     );
   }
 
@@ -91,7 +91,7 @@ export default class CoreTasksService {
       async () => {
         await this.sshManager.disconnect();
       },
-      TASK_POSITIONS.DIRECT,
+      taskPositions.DIRECT,
     );
   }
 
@@ -101,7 +101,7 @@ export default class CoreTasksService {
       async ({ serverConfig }) => {
         await this.releaseService.cleanUpReleases(serverConfig);
       },
-      TASK_POSITIONS.DIRECT,
+      taskPositions.DIRECT,
     );
   }
 
@@ -111,7 +111,7 @@ export default class CoreTasksService {
       async ({ serverConfig }) => {
         await this.releaseService.createSymlinkForCurrentRelease(serverConfig);
       },
-      TASK_POSITIONS.DIRECT,
+      taskPositions.DIRECT,
     );
   }
 
