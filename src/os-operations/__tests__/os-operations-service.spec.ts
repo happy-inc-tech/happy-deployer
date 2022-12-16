@@ -40,7 +40,7 @@ describe('os-operations-service', () => {
   // })
 
   it('executes process', async () => {
-    await service.execute('ls -la', [], '~/');
+    await service.execute('ls -la', '~/');
     const [command, cwd] = getLastCallArgs(childProcessSpy);
     expect(command).toEqual('ls -la');
     expect(cwd).toEqual({ cwd: '~/' });

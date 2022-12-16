@@ -17,7 +17,7 @@ export function buildTask(buildCommand: string = 'npm run build'): Task {
         logger.info('skipping this task for rollback');
         return;
       }
-      await execLocal(buildCommand, [], tempDirectory);
+      await execLocal(buildCommand, tempDirectory);
     },
   );
 }
@@ -30,7 +30,7 @@ export function installDepsTask(installDepsCommand: string = 'npm install'): Tas
         logger.info('skipping this task for rollback');
         return;
       }
-      await execLocal(installDepsCommand, [], tempDirectory);
+      await execLocal(installDepsCommand, tempDirectory);
     },
   );
 }

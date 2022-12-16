@@ -22,7 +22,7 @@ export default class ShellSshService implements DeployerSshInterface {
     this.log('trying to connect and immediately exit', 'verbose');
     this.credentials = credentials;
     const sshCommand = this.createSshRemoteCommandString('exit');
-    await this.osOperationsService.execute(sshCommand, []);
+    await this.osOperationsService.execute(sshCommand);
   }
 
   public disconnect(): void | Promise<void> {
@@ -32,12 +32,12 @@ export default class ShellSshService implements DeployerSshInterface {
 
   public async executeRemoteCommand(command: string): Promise<string> {
     const sshCommand = this.createSshRemoteCommandString(command);
-    return this.osOperationsService.execute(sshCommand, []);
+    return this.osOperationsService.execute(sshCommand);
   }
 
   public async getDirectoriesList(remotePath: string): Promise<string[]> {
     const sshCommand = this.createSshRemoteCommandString(`cd ${remotePath} && ls -FlA`);
-    const commandResult = await this.osOperationsService.execute(sshCommand, []);
+    const commandResult = await this.osOperationsService.execute(sshCommand);
     return this.getDirectoriesFromLsFlaResult(commandResult);
   }
 
@@ -51,12 +51,12 @@ export default class ShellSshService implements DeployerSshInterface {
     const { username, host, port = 22 } = this.credentials;
 
     const command = `scp -r -P ${port} ${localPath}/* ${username}@${host}:${remotePath}`;
-    await this.osOperationsService.execute(command, []);
+    await this.osOperationsService.execute(command);
   }
 
   public async readRemoteSymlink(path: string): Promise<string> {
     const sshCommand = this.createSshRemoteCommandString(`readlink ${path}`);
-    const target = await this.osOperationsService.execute(sshCommand, []);
+    const target = await this.osOperationsService.execute(sshCommand);
     this.log(`Symlink value is "${target}"`);
     return target.trim();
   }
