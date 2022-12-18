@@ -117,8 +117,6 @@ describe('task-service', () => {
 
     const assembledTasksNames = taskService.getAssembledTasks().map((task) => task.name);
 
-    console.error(assembledTasksNames);
-
     expect(assembledTasksNames.length).toEqual(8);
     expect(assembledTasksNames).toStrictEqual([
       GIT_CORE_TASK_NAME,
