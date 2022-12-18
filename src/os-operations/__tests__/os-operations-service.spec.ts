@@ -29,16 +29,6 @@ vi.mock('node:child_process', () => {
 const childProcessSpy = vi.spyOn(child_process, 'exec');
 
 describe('os-operations-service', () => {
-  // @todo move in release-service.spec.ts
-  // it('gets release name', () => {
-  //     vi.useFakeTimers()
-  //     vi.setSystemTime(new Date(2022, 4, 22, 13, 0, 0))
-  //
-  //     expect(service.getReleaseNameFromCurrentTime()).toEqual('20220522130000')
-  //
-  //     vi.useRealTimers()
-  // })
-
   it('executes process', async () => {
     await service.execute('ls -la', '~/');
     const [command, cwd] = getLastCallArgs(childProcessSpy);

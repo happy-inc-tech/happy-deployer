@@ -214,10 +214,9 @@ let OsOperationsService = class OsOperationsService {
     getPathRelativeToBuildDirectory(buildDir, ...pathParts) {
         return path.resolve(buildDir, ...pathParts);
     }
-    execute(command, args, runIn) {
+    execute(command, runIn) {
         return new Promise((resolve, reject) => {
-            const resultCommand = [command, ...args].join(' ');
-            child_process.exec(resultCommand, {
+            child_process.exec(command, {
                 cwd: runIn,
             }, (error, stdout, stderr) => {
                 if (stderr) {
@@ -425,7 +424,7 @@ let ShellSshService = class ShellSshService {
         this.log('trying to connect and immediately exit', 'verbose');
         this.credentials = credentials;
         const sshCommand = this.createSshRemoteCommandString('exit');
-        await this.osOperationsService.execute(sshCommand, []);
+        await this.osOperationsService.execute(sshCommand);
     }
     disconnect() {
         this.log('no need to disconnect in shell mode', 'verbose');
@@ -433,11 +432,11 @@ let ShellSshService = class ShellSshService {
     }
     async executeRemoteCommand(command) {
         const sshCommand = this.createSshRemoteCommandString(command);
-        return this.osOperationsService.execute(sshCommand, []);
+        return this.osOperationsService.execute(sshCommand);
     }
     async getDirectoriesList(remotePath) {
         const sshCommand = this.createSshRemoteCommandString(`cd ${remotePath} && ls -FlA`);
-        const commandResult = await this.osOperationsService.execute(sshCommand, []);
+        const commandResult = await this.osOperationsService.execute(sshCommand);
         return this.getDirectoriesFromLsFlaResult(commandResult);
     }
     async uploadDirectory(localPath, remotePath) {
@@ -448,11 +447,11 @@ let ShellSshService = class ShellSshService {
         }
         const { username, host, port = 22 } = this.credentials;
         const command = `scp -r -P ${port} ${localPath}/* ${username}@${host}:${remotePath}`;
-        await this.osOperationsService.execute(command, []);
+        await this.osOperationsService.execute(command);
     }
     async readRemoteSymlink(path) {
         const sshCommand = this.createSshRemoteCommandString(`readlink ${path}`);
-        const target = await this.osOperationsService.execute(sshCommand, []);
+        const target = await this.osOperationsService.execute(sshCommand);
         this.log(`Symlink value is "${target}"`);
         return target.trim();
     }
@@ -937,7 +936,7 @@ let GitService = class GitService {
         return this.logger.info('[GIT]', ...messages);
     }
     async runGitCommand(args, runIn) {
-        await this.osOperationsService.execute('git', args, runIn);
+        await this.osOperationsService.execute(['git', ...args].join(' '), runIn);
     }
 };
 GitService = __decorate([
@@ -1011,12 +1010,12 @@ let CoreTasksService = class CoreTasksService {
     createRollbackFindReleasesTask() {
         this.taskService.addTask(RELEASES_ROLLBACK_FIND_RELEASES_CORE_TASK_NAME, async ({ serverConfig }) => {
             await this.releaseService.findCurrentAndPreviousReleaseForRollback(serverConfig);
-        });
+        }, taskPositions.DIRECT);
     }
     createRemoveRollbackRelease() {
         this.taskService.addTask(RELEASES_ROLLBACK_DELETE_IF_NEED_CORE_TASK_NAME, async ({ serverConfig }) => {
             await this.releaseService.deleteReleaseForRollback(serverConfig);
-        });
+        }, taskPositions.DIRECT);
     }
 };
 CoreTasksService = __decorate([
@@ -1081,7 +1080,7 @@ let HappyDeployer = class HappyDeployer {
         this.createInternalDeployTasks();
         this.taskService.assembleTasksArray();
         this.checkRequiredSteps();
-        this.logger.info('Start deploying');
+        this.logger.info(`Start deploying for config "${config.name}"`);
         await this.taskService.runAllTasks(server);
         this.logger.success('Successfully deployed');
     }
@@ -1092,9 +1091,10 @@ let HappyDeployer = class HappyDeployer {
         this.storage.setReleasePath('');
         const config = this.serverService.getServerConfig(server);
         this.storage.setCurrentConfig(config);
+        this.releaseService.createReleaseNameAndPath(config);
         this.createInternalRollbackTasks();
         this.checkRequiredSteps();
-        this.logger.info('Start rollback');
+        this.logger.info(`Start rollback for config "${config.name}"`);
         await this.taskService.runAllTasks(server);
         this.logger.success('Rollback was successful');
     }
@@ -1171,27 +1171,30 @@ function getService(serviceConstructor) {
     return container.get(serviceConstructor);
 }
 
+const createLocalCommandPrefabTask = (name, defaultCommand, execIf) => {
+    return (commandOrFactory) => {
+        return getService(TaskService$1).createTask(name, async (context) => {
+            let command = defaultCommand;
+            if (typeof commandOrFactory === 'string') {
+                command = commandOrFactory;
+            }
+            if (typeof commandOrFactory === 'function') {
+                command = commandOrFactory(context);
+            }
+            if (execIf && !execIf(context)) {
+                context.logger.info('skipping task', name);
+                return;
+            }
+            await context.execLocal(command, context.serverConfig.tempDirectory);
+        });
+    };
+};
+const installDepsTask = createLocalCommandPrefabTask('app:install-deps', 'npm install', ({ action }) => action === 'deploy');
+const buildTask = createLocalCommandPrefabTask('app:build', 'npm run build', ({ action }) => action === 'deploy');
+
 function createDeployer() {
     createContainer();
     return getService(HappyDeployer$1);
-}
-function buildTask(buildCommand = 'npm run build') {
-    return getService(TaskService$1).createTask('app:build', async ({ execLocal, logger, action, serverConfig: { tempDirectory } }) => {
-        if (action === 'rollback') {
-            logger.info('skipping this task for rollback');
-            return;
-        }
-        await execLocal(buildCommand, [], tempDirectory);
-    });
-}
-function installDepsTask(installDepsCommand = 'npm install') {
-    return getService(TaskService$1).createTask('app:install-deps', async ({ execLocal, logger, action, serverConfig: { tempDirectory } }) => {
-        if (action === 'rollback') {
-            logger.info('skipping this task for rollback');
-            return;
-        }
-        await execLocal(installDepsCommand, [], tempDirectory);
-    });
 }
 
 export { buildTask, createDeployer, installDepsTask };
