@@ -723,7 +723,6 @@ let ServerService = class ServerService {
         }
         const requiredKeys = [
             'name',
-            'repository',
             'branch',
             'deployPath',
             'dirToCopy',
@@ -1185,6 +1184,7 @@ const createLocalCommandPrefabTask = (name, defaultCommand, execIf) => {
                 context.logger.info('skipping task', name);
                 return;
             }
+            context.logger.verbose(`running command "${command}"`);
             await context.execLocal(command, context.serverConfig.tempDirectory);
         });
     };

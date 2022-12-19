@@ -76,7 +76,6 @@ export default class ServerService {
 
     const requiredKeys: Array<keyof ServerConfiguration> = [
       'name',
-      'repository',
       'branch',
       'deployPath',
       'dirToCopy',

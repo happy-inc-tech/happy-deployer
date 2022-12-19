@@ -24,6 +24,7 @@ export const createLocalCommandPrefabTask = (
         context.logger.info('skipping task', name);
         return;
       }
+      context.logger.verbose(`running command "${command}"`);
       await context.execLocal(command, context.serverConfig.tempDirectory);
     });
   };
