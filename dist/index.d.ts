@@ -94,7 +94,7 @@ declare class OsOperationsService {
     getHomeDirectoryPath(): string;
     getRandomBuildDirectory(): string;
     getPathRelativeToBuildDirectory(buildDir: string, ...pathParts: string[]): string;
-    execute(command: string, args: string[], runIn?: string): Promise<string>;
+    execute(command: string, runIn?: string): Promise<string>;
     createDirectory(path: string): Promise<void>;
     removeDirectory(path: string): void;
     getDirectoryContents(path: string): Promise<FsEntity[]>;
@@ -258,8 +258,14 @@ declare class HappyDeployer {
     protected checkRequiredSteps(steps?: RequiredSteps[]): void;
 }
 
+type PrefabTask = {
+    (customCommand?: string): Task;
+    (customCommandFactory?: (context: TaskExecutorContext) => string): Task;
+};
+
+declare const installDepsTask: PrefabTask;
+declare const buildTask: PrefabTask;
+
 declare function createDeployer(): HappyDeployer;
-declare function buildTask(buildCommand?: string): Task;
-declare function installDepsTask(installDepsCommand?: string): Task;
 
 export { buildTask, createDeployer, installDepsTask };

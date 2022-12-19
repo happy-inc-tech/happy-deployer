@@ -116,14 +116,22 @@ export default class CoreTasksService {
   }
 
   public createRollbackFindReleasesTask() {
-    this.taskService.addTask(RELEASES_ROLLBACK_FIND_RELEASES_CORE_TASK_NAME, async ({ serverConfig }) => {
-      await this.releaseService.findCurrentAndPreviousReleaseForRollback(serverConfig);
-    });
+    this.taskService.addTask(
+      RELEASES_ROLLBACK_FIND_RELEASES_CORE_TASK_NAME,
+      async ({ serverConfig }) => {
+        await this.releaseService.findCurrentAndPreviousReleaseForRollback(serverConfig);
+      },
+      taskPositions.DIRECT,
+    );
   }
 
   public createRemoveRollbackRelease() {
-    this.taskService.addTask(RELEASES_ROLLBACK_DELETE_IF_NEED_CORE_TASK_NAME, async ({ serverConfig }) => {
-      await this.releaseService.deleteReleaseForRollback(serverConfig);
-    });
+    this.taskService.addTask(
+      RELEASES_ROLLBACK_DELETE_IF_NEED_CORE_TASK_NAME,
+      async ({ serverConfig }) => {
+        await this.releaseService.deleteReleaseForRollback(serverConfig);
+      },
+      taskPositions.DIRECT,
+    );
   }
 }
