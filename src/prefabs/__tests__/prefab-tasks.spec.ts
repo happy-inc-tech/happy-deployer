@@ -13,6 +13,9 @@ const testTaskContext: any = {
     },
   },
   execLocal: vi.fn(),
+  logger: {
+    verbose: vi.fn(),
+  },
 };
 
 describe('prefab-tasks', () => {

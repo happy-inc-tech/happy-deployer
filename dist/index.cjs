@@ -67,6 +67,9 @@ let CacheService = class CacheService {
     getCached(key) {
         return this._cache.get(key) ?? null;
     }
+    reset() {
+        this._cache.clear();
+    }
 };
 CacheService = __decorate([
     inversify.injectable()
@@ -79,6 +82,7 @@ const RELEASE_PATH_KEY = 'RELEASE_PATH';
 const CURRENT_SERVER_CONFIG_KEY = 'CURRENT_SERVER_CONFIG';
 const PREVIOUS_RELEASE_NAME_KEY = 'PREVIOUS_RELEASE_NAME';
 const DEPLOYER_ACTION_KEY = 'DEPLOYER_ACTION';
+const SERVER_CONFIGS_KEY = 'SERVER_CONFIGS';
 
 let StorageService = class StorageService {
     cacheService;
@@ -120,6 +124,21 @@ let StorageService = class StorageService {
     }
     getDeployerAction() {
         return this.safelyGetFromCache(DEPLOYER_ACTION_KEY);
+    }
+    addServerConfig(config) {
+        try {
+            const configs = this.safelyGetFromCache(SERVER_CONFIGS_KEY);
+            configs[config.name] = config;
+            this.cacheService.cache(SERVER_CONFIGS_KEY, configs);
+        }
+        catch (e) {
+            this.cacheService.cache(SERVER_CONFIGS_KEY, {
+                [config.name]: config,
+            });
+        }
+    }
+    getServerConfigs() {
+        return this.safelyGetFromCache(SERVER_CONFIGS_KEY);
     }
     safelyGetFromCache(key) {
         const value = this.cacheService.getCached(key);
@@ -672,7 +691,6 @@ let ServerService = class ServerService {
     logger;
     processService;
     releaseService;
-    serverConfigs = {};
     constructor(osOperationsService, storage, logger, processService, releaseService) {
         this.osOperationsService = osOperationsService;
         this.storage = storage;
@@ -681,11 +699,6 @@ let ServerService = class ServerService {
         this.releaseService = releaseService;
     }
     createBaseConfig(settings) {
-        try {
-            const cached = this.storage.getCommonConfig();
-            return cached;
-        }
-        catch (e) { }
         const config = merge(this.getDefaultServerConfigValues(), settings);
         this.storage.setCommonConfig(config);
         return config;
@@ -696,10 +709,10 @@ let ServerService = class ServerService {
         if (!this.isServerConfiguration(serverConfig)) {
             return this.processService.errorExit(1);
         }
-        this.serverConfigs[serverConfig.name] = serverConfig;
+        this.storage.addServerConfig(serverConfig);
     }
     getServerConfig(name) {
-        return this.serverConfigs[name];
+        return this.storage.getServerConfigs()[name];
     }
     getDefaultServerConfigValues() {
         const tempDirectory = this.osOperationsService.getRandomBuildDirectory();

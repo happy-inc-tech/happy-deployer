@@ -11,4 +11,8 @@ export default class CacheService {
   public getCached<T = unknown>(key: string): T | null {
     return (this._cache.get(key) as T) ?? null;
   }
+
+  public reset() {
+    this._cache.clear();
+  }
 }

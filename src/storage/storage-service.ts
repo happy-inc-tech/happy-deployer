@@ -8,6 +8,7 @@ import {
   PREVIOUS_RELEASE_NAME_KEY,
   RELEASE_NAME_KEY,
   RELEASE_PATH_KEY,
+  SERVER_CONFIGS_KEY,
 } from './const.js';
 import type { DeployerAction } from '../deployer/types.js';
 
@@ -61,6 +62,22 @@ export default class StorageService {
 
   public getDeployerAction(): DeployerAction {
     return this.safelyGetFromCache<DeployerAction>(DEPLOYER_ACTION_KEY);
+  }
+
+  public addServerConfig(config: ServerConfiguration): void {
+    try {
+      const configs = this.safelyGetFromCache<Record<string, ServerConfiguration>>(SERVER_CONFIGS_KEY);
+      configs[config.name] = config;
+      this.cacheService.cache(SERVER_CONFIGS_KEY, configs);
+    } catch (e) {
+      this.cacheService.cache(SERVER_CONFIGS_KEY, {
+        [config.name]: config,
+      });
+    }
+  }
+
+  public getServerConfigs(): Record<string, ServerConfiguration> {
+    return this.safelyGetFromCache(SERVER_CONFIGS_KEY);
   }
 
   protected safelyGetFromCache<T>(key: string): T {

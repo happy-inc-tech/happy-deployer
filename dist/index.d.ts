@@ -19,6 +19,7 @@ declare class CacheService {
     protected readonly _cache: Map<string, unknown>;
     cache(key: string, value: unknown): void;
     getCached<T = unknown>(key: string): T | null;
+    reset(): void;
 }
 
 type DeepPartial<T> = T extends object ? {
@@ -67,6 +68,8 @@ declare class StorageService {
     getPreviousReleaseName(): string;
     setDeployerAction(action: DeployerAction): void;
     getDeployerAction(): DeployerAction;
+    addServerConfig(config: ServerConfiguration): void;
+    getServerConfigs(): Record<string, ServerConfiguration>;
     protected safelyGetFromCache<T>(key: string): T;
 }
 
@@ -145,7 +148,6 @@ declare class ServerService {
     protected readonly logger: LoggerService;
     protected readonly processService: ProcessService;
     protected readonly releaseService: ReleaseService;
-    protected readonly serverConfigs: Record<string, ServerConfiguration>;
     constructor(osOperationsService: OsOperationsService, storage: StorageService, logger: LoggerService, processService: ProcessService, releaseService: ReleaseService);
     createBaseConfig(settings: ServerConfigurationParametersWithoutName): BaseConfig;
     createServerConfig(settings: ServerConfigurationParameters): void;

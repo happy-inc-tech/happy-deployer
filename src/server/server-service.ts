@@ -15,7 +15,6 @@ import merge from 'lodash.merge';
 
 @injectable()
 export default class ServerService {
-  protected readonly serverConfigs: Record<string, ServerConfiguration> = {};
   constructor(
     @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsService,
     @inject(StorageService) protected readonly storage: StorageService,
@@ -25,11 +24,6 @@ export default class ServerService {
   ) {}
 
   public createBaseConfig(settings: ServerConfigurationParametersWithoutName): BaseConfig {
-    try {
-      const cached = this.storage.getCommonConfig();
-      return cached;
-    } catch (e) {}
-
     const config = merge(this.getDefaultServerConfigValues(), settings);
     this.storage.setCommonConfig(config);
     return config;
@@ -43,11 +37,11 @@ export default class ServerService {
       return this.processService.errorExit(1);
     }
 
-    this.serverConfigs[serverConfig.name] = serverConfig;
+    this.storage.addServerConfig(serverConfig);
   }
 
   public getServerConfig(name: string): ServerConfiguration {
-    return this.serverConfigs[name];
+    return this.storage.getServerConfigs()[name];
   }
 
   protected getDefaultServerConfigValues(): DefaultServerConfigValues {
