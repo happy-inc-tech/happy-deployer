@@ -33,7 +33,7 @@ describe('server-service', () => {
       releaseNameGetter: releaseService.getReleaseNameFromCurrentTime,
       releaseNameComparer: releaseService.releasesSorter,
       tempDirectory: osOpsSpy.mock.results[0].value,
-      dirToCopy: osOpsSpy.mock.results[0].value + '/dist',
+      dirToCopy: 'dist',
       deployer: {
         currentReleaseSymlinkName: 'current',
         deleteOnRollback: true,
@@ -73,7 +73,7 @@ describe('server-service', () => {
       name: 'prod',
       deployPath: '/var/www/release',
       branch: 'main',
-      dirToCopy: osOpsSpy.mock.results[0].value + '/dist',
+      dirToCopy: 'dist',
       ssh: {
         host: '127.0.0.1',
         port: 22,
