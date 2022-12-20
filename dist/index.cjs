@@ -719,7 +719,7 @@ let ServerService = class ServerService {
         return {
             branch: 'master',
             tempDirectory,
-            dirToCopy: this.osOperationsService.getPathRelativeToBuildDirectory(tempDirectory, 'dist'),
+            dirToCopy: 'dist',
             releaseNameGetter: this.releaseService.getReleaseNameFromCurrentTime,
             releaseNameComparer: this.releaseService.releasesSorter,
             deployer: {
