@@ -1,6 +1,6 @@
 {
   "name": "happy-deployer",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Simple deployer for JS apps",
   "author": "Lyoha Plotinka",
   "type": "module",
