@@ -4,3 +4,4 @@ demo.ts
 yarn-error.log
 node_modules
 experiments.cjs
+dist
