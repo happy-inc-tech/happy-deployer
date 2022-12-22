@@ -32,7 +32,7 @@ export default class ServerService {
   public createServerConfig(settings: ServerConfigurationParameters): void {
     const baseConfig = this.storage.getCommonConfig();
 
-    const serverConfig = merge(baseConfig, settings);
+    const serverConfig = merge({}, baseConfig, settings);
     if (!this.isServerConfiguration(serverConfig)) {
       return this.processService.errorExit(1);
     }

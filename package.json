@@ -52,7 +52,7 @@
     "vitest": "^0.25.3"
   },
   "nano-staged": {
-    "*.{ts}": "npm run lint && npm run test && npm run check-types"
+    "*.{ts}": ["npm run lint", "npm run test"]
   },
   "simple-git-hooks": {
     "pre-commit": "./node_modules/.bin/nano-staged"

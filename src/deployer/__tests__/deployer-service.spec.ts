@@ -1,13 +1,16 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import HappyDeployer from '../deployer-service.js';
 import TaskService from '../../task/task-service.js';
 import ProcessService from '../../process/process-service.js';
 import { getService } from '../../container/index.js';
+import StorageService from '../../storage/storage-service.js';
 
 describe('deployer-service', () => {
   const deployerService = getService(HappyDeployer);
   const taskService = getService(TaskService);
   const processService = getService(ProcessService);
+  const storageService = getService(StorageService);
   vi.spyOn(taskService, 'assembleTasksArray');
   vi.spyOn(processService, 'errorExit');
   vi.spyOn(taskService, 'runAllTasks').mockImplementation(async () => {});
@@ -35,6 +38,9 @@ describe('deployer-service', () => {
       })
       .addServer({
         name: 'server',
+      })
+      .addServer({
+        name: 'secondServer',
       });
   });
 
@@ -49,5 +55,13 @@ describe('deployer-service', () => {
     expect(taskService.getAssembledTasks().length).toEqual(5);
     expect(taskService.assembleTasksArray).not.toHaveBeenCalled();
     expect(taskService.getAssembledTasks().length).not.toBe(0);
+  });
+
+  it('correctly adds and retrieves servers', async () => {
+    await deployer.deploy('server');
+    expect(storageService.getCurrentConfig().name).toEqual('server');
+
+    await deployer.deploy('secondServer');
+    expect(storageService.getCurrentConfig().name).toEqual('secondServer');
   });
 });
