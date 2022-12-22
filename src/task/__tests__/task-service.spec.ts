@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, Mock, beforeEach } from 'vitest';
-import { getServiceForTests } from '../../test-utils/setup.js';
 import TaskService from '../task-service.js';
 import StorageService from '../../storage/storage-service.js';
 import HappyDeployer from '../../deployer/deployer-service.js';
@@ -11,14 +10,7 @@ import {
   SSH_DISCONNECT_CORE_TASK_NAME,
 } from '../../core-tasks/const.js';
 import { taskPositions } from '../const.js';
-
-vi.stubGlobal('process', {
-  exit: vi.fn(),
-});
-
-const taskService = getServiceForTests(TaskService);
-const deployerService = getServiceForTests(HappyDeployer);
-const coreTaskService = getServiceForTests(CoreTasksService);
+import { getService } from '../../container/index.js';
 
 const tasks: [string, Mock][] = [
   ['test-task', vi.fn()],
@@ -28,6 +20,10 @@ const tasks: [string, Mock][] = [
 ];
 
 describe('task-service', () => {
+  const taskService = getService(TaskService);
+  const deployerService = getService(HappyDeployer);
+  const coreTaskService = getService(CoreTasksService);
+
   beforeEach(() => {
     taskService.clearAssembledTasks();
     taskService.clearTasksGroups();
@@ -44,8 +40,8 @@ describe('task-service', () => {
       .task(...tasks[0])
       .task(...tasks[1]);
 
-    getServiceForTests(StorageService).setReleaseName('release');
-    getServiceForTests(StorageService).setReleasePath('release/path');
+    getService(StorageService).setReleaseName('release');
+    getService(StorageService).setReleasePath('release/path');
     taskService.assembleTasksArray();
   });
 
@@ -55,7 +51,7 @@ describe('task-service', () => {
   });
 
   it('executes task', async () => {
-    getServiceForTests(StorageService).setDeployerAction('deploy');
+    getService(StorageService).setDeployerAction('deploy');
     await taskService.runTask('server', 'test-task');
     expect(tasks[0][1]).toHaveBeenCalled();
   });

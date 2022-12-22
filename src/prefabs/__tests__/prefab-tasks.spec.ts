@@ -1,9 +1,6 @@
 import 'reflect-metadata';
 import { describe, expect, it, vi } from 'vitest';
 import { createLocalCommandPrefabTask } from '../index.js';
-import createContainer from '../../container/index.js';
-
-createContainer();
 
 const testTaskContext: any = {
   serverConfig: {

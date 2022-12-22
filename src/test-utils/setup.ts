@@ -1,16 +1,40 @@
 import 'reflect-metadata';
 import createContainer from '../container/index.js';
-import { interfaces } from 'inversify';
-import ServiceIdentifier = interfaces.ServiceIdentifier;
+import { beforeEach, vi } from 'vitest';
 
-globalThis.diContainer = createContainer();
+createContainer();
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-export default function () {}
+beforeEach(() => {
+  vi.stubGlobal('process', {
+    exit: vi.fn(),
+  });
 
-export function getServiceForTests<T>(serviceConstructor: ServiceIdentifier<T>) {
-  if (!globalThis.diContainer) {
-    throw new Error('No DI container');
-  }
-  return globalThis.diContainer.get<T>(serviceConstructor);
-}
+  vi.mock('node:child_process', () => {
+    return {
+      default: {
+        exec: vi.fn((cmd, opts, callback) => {
+          callback && callback(null, 'out', 'err');
+        }),
+      },
+    };
+  });
+
+  vi.mock('node:fs', () => {
+    return {
+      default: {
+        promises: {
+          mkdir: vi
+            .fn()
+            .mockImplementation((...args: any[]) =>
+              console.log('mkdir called', args.map((arg) => JSON.stringify(arg)).join(',')),
+            ),
+        },
+        rmSync: vi
+          .fn()
+          .mockImplementation((...args: any[]) =>
+            console.log('rmSync called', args.map((arg) => JSON.stringify(arg)).join(',')),
+          ),
+      },
+    };
+  });
+});

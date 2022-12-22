@@ -1,38 +1,31 @@
 import { describe, it, expect, vi } from 'vitest';
-import { getServiceForTests } from '../../test-utils/setup.js';
 import ReleaseService from '../release-service.js';
 import StorageService from '../../storage/storage-service.js';
 import SshManager from '../../ssh/ssh-manager.js';
-
-const releaseService = getServiceForTests(ReleaseService);
-const storageService = getServiceForTests(StorageService);
-const sshManager = getServiceForTests(SshManager);
-
-const serverConfig: any = {
-  releaseNameGetter: () => '1',
-  deployPath: '/deploy/path',
-  deployer: {
-    releasesDirName: 'releases',
-    currentReleaseSymlinkName: 'current',
-    keepReleases: 3,
-  },
-  releaseNameComparer: releaseService.releasesSorter,
-};
-
-vi.mock('../../ssh/ssh-manager.js', async () => {
-  const { default: SshManager } = await import('../../ssh/ssh-manager.js');
-
-  return {
-    default: class extends SshManager {
-      public executeRemoteCommand = vi.fn();
-      public getDirectoriesList = (remotePath: string) =>
-        Promise.resolve(['20220522130000', '20220522130100', '20220522120000', '20220522140000']);
-      public readRemoteSymlink = (path: string) => Promise.resolve('20220522140000');
-    },
-  };
-});
+import { getService } from '../../container/index.js';
 
 describe('release-service', () => {
+  const releaseService = getService(ReleaseService);
+  const storageService = getService(StorageService);
+  const sshManager = getService(SshManager);
+
+  const serverConfig: any = {
+    releaseNameGetter: () => '1',
+    deployPath: '/deploy/path',
+    deployer: {
+      releasesDirName: 'releases',
+      currentReleaseSymlinkName: 'current',
+      keepReleases: 3,
+    },
+    releaseNameComparer: releaseService.releasesSorter,
+  };
+
+  vi.spyOn(sshManager, 'executeRemoteCommand').mockImplementation(() => Promise.resolve(''));
+  vi.spyOn(sshManager, 'getDirectoriesList').mockImplementation(() =>
+    Promise.resolve(['20220522130000', '20220522130100', '20220522120000', '20220522140000']),
+  );
+  vi.spyOn(sshManager, 'readRemoteSymlink').mockImplementation(() => Promise.resolve('20220522140000'));
+
   it('gets release name', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2022, 4, 22, 13, 0, 0));

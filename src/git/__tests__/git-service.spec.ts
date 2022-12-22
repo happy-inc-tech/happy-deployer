@@ -1,35 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
-import { getServiceForTests } from '../../test-utils/setup.js';
 import GitService from '../git-service.js';
 import fs from 'node:fs';
 import child_process from 'node:child_process';
 import { getLastCallArgs } from '../../test-utils/getLastCallArgs.js';
-
-const gitService = getServiceForTests(GitService);
-
-vi.mock('node:child_process', () => {
-  return {
-    default: {
-      exec: vi.fn((cmd, opts, callback) => {
-        callback && callback(null, 'out', 'err');
-      }),
-    },
-  };
-});
-
-vi.mock('node:fs', () => {
-  return {
-    default: {
-      promises: {
-        mkdir: vi.fn(),
-      },
-    },
-  };
-});
+import { getService } from '../../container/index.js';
 
 const childProcessSpy = vi.spyOn(child_process, 'exec');
 
 describe('git-service', () => {
+  const gitService = getService(GitService);
+
   it('executes command to clone repository', async () => {
     await gitService.cloneRepository('git@git.com/t/1', '/home/repo');
     expect(fs.promises.mkdir).toHaveBeenCalledWith('/home/repo');

@@ -1,22 +1,13 @@
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
-import { getServiceForTests } from '../../../test-utils/setup.js';
 import OsOperationsService from '../../../os-operations/os-operations-service.js';
 import ShellSshService from '../shell-ssh-service.js';
-
-const osOpsService = getServiceForTests(OsOperationsService);
-const shellSshService = getServiceForTests(ShellSshService);
-
-vi.mock('../../../os-operations/os-operations-service.js', async () => {
-  const { default: OsOps } = await import('../../../os-operations/os-operations-service.js');
-
-  return {
-    default: class extends OsOps {
-      public execute = vi.fn();
-    },
-  };
-});
+import { getService } from '../../../container/index.js';
 
 describe('shell-ssh-service', () => {
+  const osOpsService = getService(OsOperationsService);
+  const shellSshService = getService(ShellSshService);
+  vi.spyOn(osOpsService, 'execute').mockImplementation(() => Promise.resolve(''));
+
   beforeEach(() => {
     shellSshService.connect({ username: 'test', host: 'ssh.com', port: 33 });
   });
