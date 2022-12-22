@@ -1,7 +1,5 @@
 import typescript from '@rollup/plugin-typescript';
 import dts from 'rollup-plugin-dts';
-import commonjs from '@rollup/plugin-commonjs';
-import nodeResolve from '@rollup/plugin-node-resolve';
 
 export default [
   {
@@ -11,8 +9,7 @@ export default [
       format: 'cjs',
       sourcemap: false,
     },
-    plugins: [/* commonjs(), nodeResolve(), */ typescript()],
-    // external: ['inversify', 'node-ssh', 'reflect-metadata'],
+    plugins: [typescript()],
   },
   {
     input: './src/index.ts',
