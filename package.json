@@ -21,7 +21,7 @@
     "test": "vitest run",
     "check-types": "tsc --noEmit",
     "build": "rm -rf ./dist && rollup -c",
-    "postinstall": "npx simple-git-hooks"
+    "prepare": "npx simple-git-hooks"
   },
   "dependencies": {
     "date-fns": "^2.29.3",
