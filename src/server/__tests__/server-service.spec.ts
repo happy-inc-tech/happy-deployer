@@ -1,27 +1,21 @@
 import { describe, it, expect, vi } from 'vitest';
-import { getServiceForTests } from '../../test-utils/setup.js';
 import ServerService from '../server-service.js';
 import CacheService from '../../cache/cache-service.js';
 import OsOperationsService from '../../os-operations/os-operations-service.js';
 import ReleaseService from '../../release/release-service.js';
 import { BaseConfig, ServerConfiguration } from '../types.js';
 import StorageService from '../../storage/storage-service.js';
-
-const serverService = getServiceForTests(ServerService);
-const cacheService = getServiceForTests(CacheService);
-const storageService = getServiceForTests(StorageService);
-const osOpsService = getServiceForTests(OsOperationsService);
-const releaseService = getServiceForTests(ReleaseService);
-
-const osOpsSpy = vi.spyOn(osOpsService, 'getRandomBuildDirectory');
-
-vi.stubGlobal('process', {
-  exit: () => {
-    throw new Error();
-  },
-});
+import { getService } from '../../container/index.js';
 
 describe('server-service', () => {
+  const serverService = getService(ServerService);
+  const cacheService = getService(CacheService);
+  const storageService = getService(StorageService);
+  const osOpsService = getService(OsOperationsService);
+  const releaseService = getService(ReleaseService);
+
+  const osOpsSpy = vi.spyOn(osOpsService, 'getRandomBuildDirectory');
+
   it('creates and caches common config', () => {
     serverService.createBaseConfig({
       repository: 'git@git.com/1/2',

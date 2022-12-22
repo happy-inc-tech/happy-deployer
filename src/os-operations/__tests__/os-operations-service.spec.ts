@@ -1,34 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getServiceForTests } from '../../test-utils/setup.js';
 import OsOperationsService from '../os-operations-service.js';
 import child_process from 'node:child_process';
 import { getLastCallArgs } from '../../test-utils/getLastCallArgs.js';
 import fs from 'node:fs';
+import { getService } from '../../container/index.js';
 
-const service = getServiceForTests(OsOperationsService);
-
-vi.mock('node:fs', () => {
-  return {
-    default: {
-      promises: {
-        mkdir: vi.fn(),
-      },
-      rmSync: vi.fn(),
-    },
-  };
-});
-vi.mock('node:child_process', () => {
-  return {
-    default: {
-      exec: vi.fn((cmd, opts, callback) => {
-        callback && callback(null, 'out', 'err');
-      }),
-    },
-  };
-});
 const childProcessSpy = vi.spyOn(child_process, 'exec');
 
 describe('os-operations-service', () => {
+  const service = getService(OsOperationsService);
+
   it('executes process', async () => {
     await service.execute('ls -la', '~/');
     const [command, cwd] = getLastCallArgs(childProcessSpy);
