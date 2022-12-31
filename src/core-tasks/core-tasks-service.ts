@@ -1,6 +1,6 @@
 import { inject, injectable } from 'inversify';
 import TaskService from '../task/task-service.js';
-import GitService from '../git/git-service.js';
+import GitService from '../vcs/git-service.js';
 import OsOperationsService from '../os-operations/os-operations-service.js';
 import ReleaseService from '../release/release-service.js';
 import SshManager from '../ssh/ssh-manager.js';
@@ -18,12 +18,13 @@ import {
   SSH_CONNECT_CORE_TASK_NAME,
   SSH_DISCONNECT_CORE_TASK_NAME,
 } from './const.js';
+import type { VSCServiceInterface } from '../vcs/types.js';
 
 @injectable()
 export default class CoreTasksService {
   constructor(
     @inject(TaskService) protected readonly taskService: TaskService,
-    @inject(GitService) protected readonly gitService: GitService,
+    @inject(GitService) protected readonly gitService: VSCServiceInterface,
     @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsService,
     @inject(ReleaseService) protected readonly releaseService: ReleaseService,
     @inject(SshManager) protected readonly sshManager: DeployerSshInterface,
@@ -37,9 +38,7 @@ export default class CoreTasksService {
           logger.info('"repository" key is undefined, skipping task');
           return;
         }
-        await this.gitService.cloneRepository(repository, tempDirectory);
-        await this.gitService.changeBranch(tempDirectory, branch);
-        await this.gitService.pull(tempDirectory);
+        await this.gitService.fetchFiles(repository, branch, tempDirectory);
       },
       taskPositions.FIRST,
     );
