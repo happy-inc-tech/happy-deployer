@@ -1,5 +1,5 @@
 import { inject, injectable } from 'inversify';
-import CacheService from '../cache/cache-service.js';
+import MemoryCacheService from '../cache/memory-cache-service.js';
 import type { BaseConfig, ServerConfiguration } from '../server/types.js';
 import {
   COMMON_CONFIG_KEY,
@@ -11,13 +11,14 @@ import {
   SERVER_CONFIGS_KEY,
 } from './const.js';
 import type { DeployerAction } from '../deployer/types.js';
+import type { DataCachingInterface } from '../cache/types.js';
 
 @injectable()
 export default class StorageService {
-  constructor(@inject(CacheService) protected readonly cacheService: CacheService) {}
+  constructor(@inject(MemoryCacheService) protected readonly cacheService: DataCachingInterface) {}
 
   public setCurrentConfig(config: ServerConfiguration): void {
-    this.cacheService.cache(CURRENT_SERVER_CONFIG_KEY, config);
+    this.cacheService.save(CURRENT_SERVER_CONFIG_KEY, config);
   }
 
   public getCurrentConfig(): ServerConfiguration {
@@ -25,7 +26,7 @@ export default class StorageService {
   }
 
   public setCommonConfig(config: BaseConfig) {
-    this.cacheService.cache(COMMON_CONFIG_KEY, config);
+    this.cacheService.save(COMMON_CONFIG_KEY, config);
   }
 
   public getCommonConfig(): BaseConfig {
@@ -33,7 +34,7 @@ export default class StorageService {
   }
 
   public setReleaseName(name: string) {
-    this.cacheService.cache(RELEASE_NAME_KEY, name);
+    this.cacheService.save(RELEASE_NAME_KEY, name);
   }
 
   public getReleaseName(): string {
@@ -41,7 +42,7 @@ export default class StorageService {
   }
 
   public setReleasePath(path: string) {
-    this.cacheService.cache(RELEASE_PATH_KEY, path);
+    this.cacheService.save(RELEASE_PATH_KEY, path);
   }
 
   public getReleasePath(): string {
@@ -49,7 +50,7 @@ export default class StorageService {
   }
 
   public setPreviousReleaseName(name: string) {
-    this.cacheService.cache(PREVIOUS_RELEASE_NAME_KEY, name);
+    this.cacheService.save(PREVIOUS_RELEASE_NAME_KEY, name);
   }
 
   public getPreviousReleaseName(): string {
@@ -57,7 +58,7 @@ export default class StorageService {
   }
 
   public setDeployerAction(action: DeployerAction) {
-    this.cacheService.cache(DEPLOYER_ACTION_KEY, action);
+    this.cacheService.save(DEPLOYER_ACTION_KEY, action);
   }
 
   public getDeployerAction(): DeployerAction {
@@ -68,9 +69,9 @@ export default class StorageService {
     try {
       const configs = this.safelyGetFromCache<Record<string, ServerConfiguration>>(SERVER_CONFIGS_KEY);
       configs[config.name] = config;
-      this.cacheService.cache(SERVER_CONFIGS_KEY, configs);
+      this.cacheService.save(SERVER_CONFIGS_KEY, configs);
     } catch (e) {
-      this.cacheService.cache(SERVER_CONFIGS_KEY, {
+      this.cacheService.save(SERVER_CONFIGS_KEY, {
         [config.name]: config,
       });
     }
@@ -81,7 +82,7 @@ export default class StorageService {
   }
 
   protected safelyGetFromCache<T>(key: string): T {
-    const value = this.cacheService.getCached<T>(key);
+    const value = this.cacheService.get<T>(key);
     if (value === null) {
       throw new Error(`[STORAGE] missing key "${key}"`);
     }

@@ -1,5 +1,5 @@
 import { Container, interfaces } from 'inversify';
-import CacheService from '../cache/cache-service.js';
+import MemoryCacheService from '../cache/memory-cache-service.js';
 import CoreTasksService from '../core-tasks/core-tasks-service.js';
 import GitService from '../vcs/git-service.js';
 import LoggerService from '../logger/logger-service.js';
@@ -19,7 +19,7 @@ let container: Container;
 export default function createContainer(): Container {
   container = new Container({ defaultScope: 'Singleton', autoBindInjectable: true });
 
-  container.bind(CacheService).to(CacheService);
+  container.bind(MemoryCacheService).to(MemoryCacheService);
   container.bind(CoreTasksService).to(CoreTasksService);
   container.bind(GitService).to(GitService);
   container.bind(LoggerService).to(LoggerService);
