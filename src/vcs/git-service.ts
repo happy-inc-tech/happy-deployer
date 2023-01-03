@@ -3,11 +3,12 @@ import OsOperationsService from '../os-operations/os-operations-service.js';
 import LoggerService from '../logger/logger-service.js';
 import type { VSCServiceInterface } from './types.js';
 import type { LoggerInterface } from '../logger/types.js';
+import type { OsOperationsInterface } from '../os-operations/types.js';
 
 @injectable()
 export default class GitService implements VSCServiceInterface {
   constructor(
-    @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsService,
+    @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsInterface,
     @inject(LoggerService) protected readonly logger: LoggerInterface,
   ) {}
 

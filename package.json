@@ -18,7 +18,7 @@
   },
   "scripts": {
     "lint": "eslint src --fix",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "check-types": "tsc --noEmit",
     "build": "rm -rf ./dist && rollup -c",
     "prepare": "npx simple-git-hooks"

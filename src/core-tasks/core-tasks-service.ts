@@ -19,13 +19,14 @@ import {
   SSH_DISCONNECT_CORE_TASK_NAME,
 } from './const.js';
 import type { VSCServiceInterface } from '../vcs/types.js';
+import type { OsOperationsInterface } from '../os-operations/types.js';
 
 @injectable()
 export default class CoreTasksService {
   constructor(
     @inject(TaskService) protected readonly taskService: TaskService,
     @inject(GitService) protected readonly gitService: VSCServiceInterface,
-    @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsService,
+    @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsInterface,
     @inject(ReleaseService) protected readonly releaseService: ReleaseService,
     @inject(SshManager) protected readonly sshManager: DeployerSshInterface,
   ) {}
