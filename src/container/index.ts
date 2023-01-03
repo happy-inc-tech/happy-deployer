@@ -1,7 +1,7 @@
 import { Container, interfaces } from 'inversify';
 import CacheService from '../cache/cache-service.js';
 import CoreTasksService from '../core-tasks/core-tasks-service.js';
-import GitService from '../git/git-service.js';
+import GitService from '../vcs/git-service.js';
 import LoggerService from '../logger/logger-service.js';
 import OsOperationsService from '../os-operations/os-operations-service.js';
 import ServerService from '../server/server-service.js';
