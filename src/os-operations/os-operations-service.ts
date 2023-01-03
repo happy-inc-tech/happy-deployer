@@ -6,10 +6,11 @@ import child_process from 'node:child_process';
 import fs from 'node:fs';
 import LoggerService from '../logger/logger-service.js';
 import type { FsEntity } from './types.js';
+import type { LoggerInterface } from '../logger/types.js';
 
 @injectable()
 export default class OsOperationsService {
-  constructor(@inject(LoggerService) protected readonly logger: LoggerService) {}
+  constructor(@inject(LoggerService) protected readonly logger: LoggerInterface) {}
 
   public getTempDirectoryPath(): string {
     return os.tmpdir();

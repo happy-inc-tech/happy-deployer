@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, Mock, beforeEach } from 'vitest';
+import type { Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import TaskService from '../task-service.js';
 import StorageService from '../../storage/storage-service.js';
 import HappyDeployer from '../../deployer/deployer-service.js';

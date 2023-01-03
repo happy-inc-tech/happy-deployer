@@ -1,14 +1,14 @@
 import type { ServerConfiguration } from '../server/types.js';
-import type LoggerService from '../logger/logger-service.js';
 import type OsOperationsService from '../os-operations/os-operations-service.js';
 import type { DeployerAction } from '../deployer/types.js';
 import type { DeployerSshInterface } from '../ssh/types.js';
 import type { ValuesOf } from '../types.js';
 import type { taskPositions } from './const.js';
+import type { LoggerInterface } from '../logger/types.js';
 
 export type TaskExecutorContext<MetaType extends Record<string, unknown> = Record<string, unknown>> = {
   serverConfig: ServerConfiguration;
-  logger: LoggerService;
+  logger: LoggerInterface;
   execLocal: typeof OsOperationsService.prototype.execute;
   execRemote: DeployerSshInterface['executeRemoteCommand'];
   action: DeployerAction;

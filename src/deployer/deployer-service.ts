@@ -9,6 +9,7 @@ import { inject, injectable } from 'inversify';
 import ProcessService from '../process/process-service.js';
 import StorageService from '../storage/storage-service.js';
 import ReleaseService from '../release/release-service.js';
+import type { LoggerInterface } from '../logger/types.js';
 
 @injectable()
 export default class HappyDeployer {
@@ -20,7 +21,7 @@ export default class HappyDeployer {
     @inject(ServerService) protected readonly serverService: ServerService,
     @inject(TaskService) protected readonly taskService: TaskService,
     @inject(CoreTasksService) protected readonly coreTasksService: CoreTasksService,
-    @inject(LoggerService) protected readonly logger: LoggerService,
+    @inject(LoggerService) protected readonly logger: LoggerInterface,
     @inject(ProcessService) protected readonly processService: ProcessService,
     @inject(StorageService) protected readonly storage: StorageService,
     @inject(ReleaseService) protected readonly releaseService: ReleaseService,

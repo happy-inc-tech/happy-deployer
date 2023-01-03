@@ -1,4 +1,5 @@
 import { inject, injectable } from 'inversify';
+import type { LoggerInterface } from './types.js';
 import { LoggerLevels } from './types.js';
 import StorageService from '../storage/storage-service.js';
 import type { DeployerBehavior } from '../server/types.js';
@@ -14,7 +15,7 @@ const LoggerLevelsColorMap: Record<LoggerLevels, string> = {
 };
 
 @injectable()
-export default class LoggerService {
+export default class LoggerService implements LoggerInterface {
   constructor(@inject(StorageService) protected readonly storage: StorageService) {}
 
   public info(...messages: any[]) {
