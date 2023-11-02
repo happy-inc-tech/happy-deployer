@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
+import type { Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import OsOperationsService from '../../../os-operations/os-operations-service.js';
 import ShellSshService from '../shell-ssh-service.js';
 import { getService } from '../../../container/index.js';
@@ -43,7 +44,7 @@ describe('shell-ssh-service', () => {
 
   it('correctly reads remote symlink', async () => {
     (osOpsService.execute as Mock).mockImplementationOnce(() => '');
-    const linkResult = await shellSshService.readRemoteSymlink('/remote/symlink');
+    await shellSshService.readRemoteSymlink('/remote/symlink');
     expect(osOpsService.execute).lastCalledWith(`ssh test@ssh.com -p 33 'readlink /remote/symlink'`);
   });
 });

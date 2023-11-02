@@ -1,14 +1,15 @@
 import { injectable } from 'inversify';
+import type { DataCachingInterface } from './types.js';
 
 @injectable()
-export default class CacheService {
+export default class MemoryCacheService implements DataCachingInterface {
   protected readonly _cache = new Map<string, unknown>();
 
-  public cache(key: string, value: unknown): void {
+  public save(key: string, value: unknown): void {
     this._cache.set(key, value);
   }
 
-  public getCached<T = unknown>(key: string): T | null {
+  public get<T = unknown>(key: string): T | null {
     return (this._cache.get(key) as T) ?? null;
   }
 

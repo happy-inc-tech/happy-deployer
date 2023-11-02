@@ -1,15 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
 import ServerService from '../server-service.js';
-import CacheService from '../../cache/cache-service.js';
+import MemoryCacheService from '../../cache/memory-cache-service.js';
 import OsOperationsService from '../../os-operations/os-operations-service.js';
 import ReleaseService from '../../release/release-service.js';
-import { BaseConfig, ServerConfiguration } from '../types.js';
+import type { BaseConfig, ServerConfiguration } from '../types.js';
 import StorageService from '../../storage/storage-service.js';
 import { getService } from '../../container/index.js';
 
 describe('server-service', () => {
   const serverService = getService(ServerService);
-  const cacheService = getService(CacheService);
+  const cacheService = getService(MemoryCacheService);
   const storageService = getService(StorageService);
   const osOpsService = getService(OsOperationsService);
   const releaseService = getService(ReleaseService);

@@ -5,11 +5,12 @@ import crypto from 'node:crypto';
 import child_process from 'node:child_process';
 import fs from 'node:fs';
 import LoggerService from '../logger/logger-service.js';
-import type { FsEntity } from './types.js';
+import type { FsEntity, OsOperationsInterface } from './types.js';
+import type { LoggerInterface } from '../logger/types.js';
 
 @injectable()
-export default class OsOperationsService {
-  constructor(@inject(LoggerService) protected readonly logger: LoggerService) {}
+export default class OsOperationsService implements OsOperationsInterface {
+  constructor(@inject(LoggerService) protected readonly logger: LoggerInterface) {}
 
   public getTempDirectoryPath(): string {
     return os.tmpdir();
@@ -21,10 +22,6 @@ export default class OsOperationsService {
 
   public getRandomBuildDirectory(): string {
     return path.resolve(this.getTempDirectoryPath(), crypto.randomUUID());
-  }
-
-  public getPathRelativeToBuildDirectory(buildDir: string, ...pathParts: string[]): string {
-    return path.resolve(buildDir, ...pathParts);
   }
 
   public execute(command: string, runIn?: string): Promise<string> {
@@ -65,7 +62,7 @@ export default class OsOperationsService {
     return fs.rmSync(path, { recursive: true });
   }
 
-  public async getDirectoryContents(path: string): Promise<FsEntity[]> {
+  public async getFilesAndFoldersFromDirectory(path: string): Promise<FsEntity[]> {
     const contents = await fs.promises.readdir(path, { withFileTypes: true });
     return contents.map((entry) => {
       let type: FsEntity['type'] = 'file';

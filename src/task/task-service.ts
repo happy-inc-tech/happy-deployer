@@ -10,6 +10,8 @@ import SshManager from '../ssh/ssh-manager.js';
 import type { DeployerSshInterface } from '../ssh/types.js';
 import { DEFAULT_TASK_POSITION, taskPositions } from './const.js';
 import { RELEASES_UPLOAD_CORE_TASK_NAME } from '../core-tasks/const.js';
+import type { LoggerInterface } from '../logger/types.js';
+import type { OsOperationsInterface } from '../os-operations/types.js';
 
 @injectable()
 export default class TaskService {
@@ -22,9 +24,9 @@ export default class TaskService {
 
   constructor(
     @inject(ServerService) protected readonly serverService: ServerService,
-    @inject(LoggerService) protected readonly logger: LoggerService,
+    @inject(LoggerService) protected readonly logger: LoggerInterface,
     @inject(ProcessService) protected readonly processService: ProcessService,
-    @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsService,
+    @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsInterface,
     @inject(SshManager) protected readonly sshManager: DeployerSshInterface,
     @inject(StorageService) protected readonly storage: StorageService,
   ) {}

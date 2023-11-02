@@ -4,9 +4,11 @@ import LoggerService from '../../logger/logger-service.js';
 import type { SshCredentials } from '../../server/types.js';
 import ProcessService from '../../process/process-service.js';
 import fs from 'node:fs';
-import { DeployerSshInterface } from '../types.js';
+import type { DeployerSshInterface } from '../types.js';
 import OsOperationsService from '../../os-operations/os-operations-service.js';
 import path from 'node:path';
+import type { LoggerInterface } from '../../logger/types.js';
+import type { OsOperationsInterface } from '../../os-operations/types.js';
 
 @injectable()
 export default class Ssh2SshService implements DeployerSshInterface {
@@ -15,9 +17,9 @@ export default class Ssh2SshService implements DeployerSshInterface {
   protected connected = false;
 
   constructor(
-    @inject(LoggerService) protected readonly logger: LoggerService,
+    @inject(LoggerService) protected readonly logger: LoggerInterface,
     @inject(ProcessService) protected readonly processService: ProcessService,
-    @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsService,
+    @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsInterface,
   ) {}
 
   public async executeRemoteCommand(command: string) {
@@ -99,7 +101,7 @@ export default class Ssh2SshService implements DeployerSshInterface {
   protected async connectWithEnumerationOfSshKeys(credentials: SshCredentials) {
     const homeDir = this.osOperationsService.getHomeDirectoryPath();
     const sshDir = path.join(homeDir, '.ssh');
-    const sshDirContents = await this.osOperationsService.getDirectoryContents(sshDir);
+    const sshDirContents = await this.osOperationsService.getFilesAndFoldersFromDirectory(sshDir);
     const FORBIDDEN_VALUES = ['known_hosts', 'authorized_keys'];
     const sshPrivateKeysPaths = sshDirContents.reduce<string[]>((total, entry) => {
       if (entry.type === 'file' && !FORBIDDEN_VALUES.includes(entry.name) && !entry.name.endsWith('.pub')) {

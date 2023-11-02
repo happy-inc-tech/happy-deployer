@@ -12,13 +12,15 @@ import ProcessService from '../process/process-service.js';
 import ReleaseService from '../release/release-service.js';
 import StorageService from '../storage/storage-service.js';
 import merge from 'lodash.merge';
+import type { LoggerInterface } from '../logger/types.js';
+import type { OsOperationsInterface } from '../os-operations/types.js';
 
 @injectable()
 export default class ServerService {
   constructor(
-    @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsService,
+    @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsInterface,
     @inject(StorageService) protected readonly storage: StorageService,
-    @inject(LoggerService) protected readonly logger: LoggerService,
+    @inject(LoggerService) protected readonly logger: LoggerInterface,
     @inject(ProcessService) protected readonly processService: ProcessService,
     @inject(ReleaseService) protected readonly releaseService: ReleaseService,
   ) {}

@@ -1,9 +1,11 @@
-import { DeployerSshInterface } from '../types.js';
+import type { DeployerSshInterface } from '../types.js';
 import { inject, injectable } from 'inversify';
-import { SshCredentials } from '../../server/types.js';
+import type { SshCredentials } from '../../server/types.js';
 import OsOperationsService from '../../os-operations/os-operations-service.js';
 import LoggerService from '../../logger/logger-service.js';
 import ProcessService from '../../process/process-service.js';
+import type { LoggerInterface } from '../../logger/types.js';
+import type { OsOperationsInterface } from '../../os-operations/types.js';
 
 @injectable()
 export default class ShellSshService implements DeployerSshInterface {
@@ -11,8 +13,8 @@ export default class ShellSshService implements DeployerSshInterface {
   protected credentials: SshCredentials | null = null;
 
   constructor(
-    @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsService,
-    @inject(LoggerService) protected readonly logger: LoggerService,
+    @inject(OsOperationsService) protected readonly osOperationsService: OsOperationsInterface,
+    @inject(LoggerService) protected readonly logger: LoggerInterface,
     @inject(ProcessService) protected readonly processService: ProcessService,
   ) {}
 

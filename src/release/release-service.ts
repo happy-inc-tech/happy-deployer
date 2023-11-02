@@ -10,13 +10,14 @@ import StorageService from '../storage/storage-service.js';
 import ProcessService from '../process/process-service.js';
 import SshManager from '../ssh/ssh-manager.js';
 import type { DeployerSshInterface } from '../ssh/types.js';
+import type { LoggerInterface } from '../logger/types.js';
 
 @injectable()
 export default class ReleaseService {
   constructor(
     @inject(SshManager) protected readonly sshManager: DeployerSshInterface,
     @inject(StorageService) protected readonly storage: StorageService,
-    @inject(LoggerService) protected readonly logger: LoggerService,
+    @inject(LoggerService) protected readonly logger: LoggerInterface,
     @inject(ProcessService) protected readonly process: ProcessService,
   ) {}
 
